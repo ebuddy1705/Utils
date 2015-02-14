@@ -133,6 +133,10 @@
 	
 	git diff oldkey newkey 	=> trace difference on screen, red text are old content, blue text are new content
 	
+	git remote add origin https://github.com/ebuddy1705/Utils.git
+	
+	git push -u origin master
+	
 	
 3. git server in LAN network
 
