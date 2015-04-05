@@ -26,7 +26,7 @@
 	
 	git commit -m "Init project"
 	
-	git remote add origin https://github.com/ebuddy1705/Utils.git
+	git remote add origin https://github.com/eslinux/Utils.git
 	
 	git push -u origin master
 	
@@ -117,7 +117,7 @@
 	
 2. git command
 
-	git clone https://github.com/ebuddy1705/Utils.git
+	git clone https://github.com/eslinux/Utils.git
 	
 	git pull => update from remote server
 
@@ -133,14 +133,14 @@
 	
 	git diff oldkey newkey 	=> trace difference on screen, red text are old content, blue text are new content
 	
-	git remote add origin https://github.com/ebuddy1705/Utils.git
+	git remote add origin https://github.com/eslinux/Utils.git
 	
 	git push -u origin master
 	
 	
 3. git server in LAN network
 
-	git remote add origin git@172.17.67.85:carmeter-ftp.git  (only one)
+	git remote add origin git@172.17.67.85:OpenglES.git  (only one)
 	
 	git push origin master
 	
