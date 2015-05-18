@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "Slist.h"
+#include "slist.h"
 
 
 int main (void)
@@ -14,13 +14,10 @@ int main (void)
 		*newint = i;
 		
 		mylist = slist_append(mylist, (void*)newint);
-			
 	}
-	
 	
 	length = slist_size(mylist);
 	printf("Number of element: %d \n", length);
-	
 	
 	walk = mylist;
 	
@@ -28,13 +25,7 @@ int main (void)
 		printf("data: %d \n", *((int*)walk->data));
 		
 		walk=walk->next;
-		
 	}
-	
-	
-	
-	
-		
 	
 	return 0;	
 }
