@@ -220,8 +220,6 @@ void slist_work(slist *list, void * data,void (* work_func)(int index,void * dat
 }
 
 
-
-//ninhld add
 slist*  slist_prepend(slist *list, void* data)
 {
     slist *new_list;
