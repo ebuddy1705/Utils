@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MMMMM 10
 #define NITER 1000000
 
 int count = 0;
-int count2 = 0;
 
 void * ThreadAdd(void * a)
 {

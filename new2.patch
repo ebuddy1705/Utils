@@ -1,0 +1,33 @@
+diff -crB c-linux/define.c c-linux_new/define.c
+*** c-linux/define.c	2015-05-07 08:48:31.837049587 +0700
+--- c-linux_new/define.c	2015-05-07 08:53:11.551852306 +0700
+***************
+*** 5,11 ****
+  
+  //###################################
+  #undef  FILE_SIZE
+! #define FILE_SIZE 42
+  
+  //###################################
+  //#define MESSAGE "ff"
+--- 5,11 ----
+  
+  //###################################
+  #undef  FILE_SIZE
+! #define FILE_SIZE 45
+  
+  //###################################
+  //#define MESSAGE "ff"
+diff -crB c-linux/semaphores/threadadd.c c-linux_new/semaphores/threadadd.c
+*** c-linux/semaphores/threadadd.c	2015-05-07 08:48:34.829001735 +0700
+--- c-linux_new/semaphores/threadadd.c	2015-05-07 08:53:38.334478112 +0700
+***************
+*** 6,11 ****
+--- 6,12 ----
+  #define NITER 1000000
+  
+  int count = 0;
++ int count2 = 0;
+  
+  void * ThreadAdd(void * a)
+  {
