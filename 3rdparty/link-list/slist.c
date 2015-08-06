@@ -1,10 +1,3 @@
-/*
- * Slist.c
- *
- *  Created on: Sep 18, 2014
- *      Author: nvthanh
- */
-
 #include <stdio.h>
 #include <stdbool.h>
 #include "Slist.h"
@@ -187,12 +180,12 @@ slist * slist_sort(slist * list, bool (*compare_func)(void * data1, void * data2
 	return list;
 }
 
-slist * slist_find(slist * list, void * data, uint8_t (*compare_func)(void * data1, void * data2))
+slist * slist_find(slist * list, void * data, bool (*compare_func)(void * data1, void * data2))
 {
 	if(!list || !compare_func) return list;
 	slist *walk=list;
 	while(walk){
-		if(compare_func(data,walk->data) != 0) return walk;
+		if(compare_func(data,walk->data) != false) return walk;
 		walk=walk->next;
 	}
 	return NULL;
@@ -200,7 +193,6 @@ slist * slist_find(slist * list, void * data, uint8_t (*compare_func)(void * dat
 
 size_t  slist_size(slist * list)
 {
-#if 1
 	if(!list) return 0;
 	slist *walk=list;
 	size_t sz=0;
@@ -210,39 +202,24 @@ size_t  slist_size(slist * list)
 		walk=walk->next;
 	}
 	return sz;
-#else
-
-    size_t length;
-
-      length = 0;
-      while (list)
-        {
-          length++;
-          list = list->next;
-        }
-
-      return length;
-#endif
 }
 
-inline void slist_trace(slist *list, void (* trace_func)(int index,void * data))
+inline void slist_trace(slist *list, void * data, void (* trace_func)(int index, void * data,void * itemData))
 {
-	slist_work(list,trace_func);
+	slist_work(list,data,trace_func);
 }
 
-void slist_work(slist *list, void (* work_func)(int index,void * data))
+void slist_work(slist *list, void * data,void (* work_func)(int index,void * data,void * itemData))
 {
 	if(!work_func || !list) return;
 	volatile int i=0;
 	while(list){
-		work_func(i++,list->data);
+		work_func(i++,data,list->data);
 		list=list->next;
 	}
 }
 
 
-
-//ninhld add
 slist*  slist_prepend(slist *list, void* data)
 {
     slist *new_list;
@@ -298,8 +275,51 @@ slist*  slist_last(slist *list)
 }
 
 
+slist* slist_insert_index (slist   *list, void *data, int position)
+{
+    slist *prev_list = NULL;
+    slist *tmp_list = NULL;
+    slist *new_list = NULL;
 
+    if (position < 0)
+        return slist_append (list, data);
+    else if (position == 0)
+        return slist_prepend (list, data);
 
+    new_list = (slist *)malloc(sizeof(slist));
+    if(!new_list)
+    {
+        perror("Out of memory !!!\n");
+        return list;
+    }
+    new_list->data = data;
 
+    if (!list)
+    {
+        new_list->next = NULL;
+        return new_list;
+    }
 
+    //prev_list = NULL;
+    tmp_list = list;
+
+    while ((position-- > 0) && tmp_list)
+    {
+        prev_list = tmp_list;
+        tmp_list = tmp_list->next;
+    }
+
+    if (prev_list)
+    {
+        new_list->next = prev_list->next;
+        prev_list->next = new_list;
+    }
+    else
+    {
+        new_list->next = list;
+        list = new_list;
+    }
+
+    return list;
+}
 

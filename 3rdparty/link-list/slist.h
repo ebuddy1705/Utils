@@ -1,15 +1,5 @@
-/*
- * Slist.h
- *
- *  Created on: Sep 18, 2014
- *      Author: nvthanh
- */
-
 #ifndef SLIST_H_
 #define SLIST_H_
-
-
-
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -26,6 +16,8 @@ typedef struct slist{
 	void * data;  /**< the pointer to data */
 	struct slist * next;  /**< the pointer to next element of list */
 }slist;
+
+#define FORCE_DATA_TYPE(type,item) ((type*)(item->data))
 
 typedef void (*release_data_function)(void*);
 typedef bool (*compare_function)(void*,void*);
@@ -130,14 +122,14 @@ extern slist * slist_sort(slist * list, bool (*compare_func)(void * data1, void 
  * \param[in] compare_func callback function to compare data of an item with condition data.
  * \return #slist the found item.
  */
-extern slist * slist_find(slist * list, void * data, uint8_t (*compare_func)(void * data1, void * data2));
+extern slist * slist_find(slist * list, void * data, bool (*compare_func)(void * data1, void * data2));
 
 /*!
  * \brief Trace all information of data of all item in single link list
  * \param[in] list input single link list will be found
  * \param[in] trace_func callback function to trace data.
  */
-extern void	slist_trace(slist *list, void (* trace_func)(int index,void * data));
+extern void	slist_trace(slist *list, void * data, void (* trace_func)(int index, void * data,void * itemData));
 
 
 /*!
@@ -145,7 +137,7 @@ extern void	slist_trace(slist *list, void (* trace_func)(int index,void * data))
  * \param[in] list input single link list will be found
  * \param[in] work_func callback function to trace data.
  */
-extern void	slist_work(slist *list, void (* work_func)(int index,void * data));
+extern void	slist_work(slist *list, void * data,void (* work_func)(int index,void * itemData,void * data));
 
 /*!
  * \brief Get amount of items in single link list.
@@ -154,18 +146,12 @@ extern void	slist_work(slist *list, void (* work_func)(int index,void * data));
  */
 extern size_t  slist_size(slist * list);
 
-
-
-
-//ninh add
 extern slist*  slist_prepend(slist *list, void* data);
 extern slist* slist_nth(slist  *list, int n);
 extern void * slist_nth_data(slist *list, int  n);
 extern int slist_index(slist *list, void *data);
 extern slist*  slist_last(slist *list);
-
-
-
+extern slist* slist_insert_index (slist *list, void *data, int position);
 
 #ifdef __cplusplus
 }//extern "C" {
