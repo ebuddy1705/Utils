@@ -702,36 +702,38 @@ cppcms_run -h 0.0.0.0 -p 3000 -m /home/ninhld/Zynq706/Project/FIREWALL/web-admin
 
 
 
-
-
-#=======================================================================
-# CORBA: omniORB-4.2.0 NOT OK
-#=======================================================================
-#python-2.7.10
-"build pgen on host first"
-SOURCE_DIR=/home/ninhld/Zynq706/Project/FIREWALL/web-admin/Python-2.7.10
-export CFLAGS="-I${SOURCE_DIR} -I${SOURCE_DIR}/Include"
-
-
-
-
-"configure for target"
-./configure --prefix=$PREFIX --host=${HOST} --build=x86_64 \
-CC=${CROSS}gcc  \
---disable-ipv6 \
-ac_cv_file__dev_ptmx=no \
-ac_cv_file__dev_ptc=no
-
-cp -rf Parser/pgen-host Parser/pgen
-touch Parser/pgen
-
-
-
-
 #=======================================================================
 # Web Application Framework: Wt
+# Dependency: boost, libfcgi, openssl, zlib
 #=======================================================================
-#libfcgi
+#GraphicsMagick-1.3.21
+# Dependency: zlib, freetype2, libpng, libxml
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
+export CFLAGS=-I${DEPEND_LIB_DIR}/include
+export CPPFLAGS=${CFLAGS}
+export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+
+
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc
+
+#postgresql-9.4.4
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc \
+--without-readline
+
+
+
+
+#pango-1.37.0
+# Dependency: freetype2, libpng, glib
+
+
+
+#fcgi-2.4.1
 ./configure --prefix=$PREFIX --host=${HOST} \
 CC=${CROSS}gcc
 
@@ -796,13 +798,130 @@ export LDFLAGS="-L${DEPEND_LIB_DIR}/lib -pthread -lm -lwt -lwthttp -lwtfcgi"
 export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
 export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
 export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
-
-
 LIBS="-Wl,-rpath-link -Wl,$DEPEND_LIB_DIR/lib"
+
+"build"
 arm-xilinx-linux-gnueabi-g++ hello.C -o hello ${CFLAGS} ${LDFLAGS} ${LIBS}
 
 "run"
-./hello.wt --docroot . --http-address 0.0.0.0 --http-port 8080  #ok
+./hello --docroot . --http-address 0.0.0.0 --http-port 8080  #ok
+
+
+
+#=======================================================================
+# python-2.7.10
+#=======================================================================
+"configure for host, do not source environment"
+./configure
+make python Parser/pgen
+
+mv python hostpython
+mv Parser/pgen Parser/hostpgen
+
+make distclean
+patch -p1 < ../Python-2.7.3-xcompile.patch
+
+"configure for target, source environment"
+./configure \
+--host=${HOST} --build=x86_64-linux-gnu \
+CC=${CROSS}gcc \
+CXX=${CROSS}g++ \
+AR=${CROSS}ar \
+RANLIB=${CROSS}ranlib \
+LD=${CROSS}ld \
+NM=arm-xilinx-linux-gnueabi-nm \
+--enable-shared \
+--disable-ipv6 \
+--prefix=$PREFIX
+
+
+make HOSTPYTHON=./hostpython \
+HOSTPGEN=./Parser/hostpgen \
+BLDSHARED="${CROSS}gcc -shared" \
+CROSS_COMPILE=${CROSS} \
+CROSS_COMPILE_TARGET=yes \
+HOSTARCH=${HOST} \
+BUILDARCH=x86_64-linux-gnu
+
+make install \
+HOSTPYTHON=./hostpython \
+BLDSHARED="${CROSS}gcc -shared" \
+CROSS_COMPILE=${CROSS} \
+CROSS_COMPILE_TARGET=yes \
+prefix=$PREFIX
+ 
+ 
+
+
+#=======================================================================
+# CORBA: omniORB-4.2.0
+# Dependency: openssl
+#=======================================================================
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
+export CFLAGS=-I${DEPEND_LIB_DIR}/include
+export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
+export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+
+./configure --prefix=$PREFIX --host=${HOST} --build=x86_64-linux-gnu \
+CC=${CROSS}gcc \
+CXX=${CROSS}g++
+
+"build cccp, cxx, omkdepend for host"
+make CC=gcc -C src/tool/omniidl/cxx/cccp
+make CXX=g++ -C src/tool/omniidl/cxx
+make CC=gcc -C src/tool/omkdepend
+
+
+"There are some small changes required in the omniORB build system: 
+Edit dir.mk file in following directories:"
+src/appl/omniMapper/dir.mk
+src/appl/omniNames/dir.mk
+src/appl/utils/catior/dir.mk
+src/appl/utils/convertior/dir.mk
+src/appl/utils/genior/dir.mk
+src/appl/utils/nameclt/dir.mk
+
+@(libs="$(CORBA_LIB_NODYN)"; $(CXXExecutable)) -> @(libs="$(CORBA_LIB_NODYN) -lstdc++"; $(CXXExecutable)) 
+
+
+"cross"
+make
+
+"re-build omnicpp and omniidl for ARM [optional unless you want to use omniidl on the target]"
+rm -f lib/_omniidlmodule.so* lib/omnicpp
+make -C src/tool/omniidl/cxx clean
+make -C src/tool/omniidl/cxx
+make
+"FAIL !!!"
+
+
+
+#build and run application
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
+export CFLAGS=-I${DEPEND_LIB_DIR}/include
+export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
+export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+LIBS="-Wl,-rpath-link -Wl,$DEPEND_LIB_DIR/lib"
+
+
+arm-xilinx-linux-gnueabi-g++ eg1.cpp -o eg1 ${CFLAGS} ${LDFLAGS} ${LIBS}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -825,8 +944,6 @@ export LD=${CROSS}ld
 
 
 DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
-DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/web-admin/cppcms-1.0.5/release/install
-DEPEND_LIB_DIR=/opt/nfs/lighttpd
 export CFLAGS=-I${DEPEND_LIB_DIR}/include
 export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
 export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
