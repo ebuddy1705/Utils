@@ -1,4 +1,29 @@
+#=======================================================================
+# Enable localhost
+#=======================================================================
 
+cat > /etc/nsswitch.conf << EONSSWITCH
+hosts:          files
+networks:       files
+protocols:      files
+services:       files
+EONSSWITCH
+
+cat > /etc/host.conf << EOHOSTCONF
+order hosts
+multi on
+EOHOSTCONF
+
+
+echo "127.0.0.1 localhost" > /etc/hosts
+echo "localhost" > /etc/hostname
+hostname localhost
+
+
+ifconfig lo 127.0.0.1 netmask 255.0.0.0 up
+
+
+ping localhost
 
 
 #=======================================================================
@@ -228,12 +253,28 @@ make ARCH=arm install
 # SSL VPN - openvpn-2.3.8
 #=======================================================================
 # openssl-1.0.0s (dependency)
-# static library
+"static library"
 ./Configure dist --prefix=${PREFIX}
 make CC="${CROSS}gcc" AR="${CROSS}ar r" RANLIB="${CROSS}ranlib" install
 
-# shared library
+"shared library"
 ./Configure --prefix=${PREFIX} shared "${HOST}":"${CROSS}gcc:-DTERMIO -O3 -Wall -I../../host/include::-D_REENTRANT::-L../../host/lib -ldl:BN_LLONG RC4_CHAR RC4_CHUNK DES_INT DES_UNROLL BF_PTR::bn_asm.o armv4-mont.o::aes_cbc.o aes-armv4.o:::sha1-armv4-large.o sha256-armv4.o sha512-armv4.o:::::::void:dlfcn:linux-shared:-fPIC::.so.1.0.0":${CROSS}ranlib::
+
+
+"if you configure for host with shared library"
+./config --prefix=${PREFIX}/usr         \
+--openssldir=${PREFIX}/etc/ssl \
+--libdir=lib          \
+shared                \
+zlib-dynamic
+
+
+
+
+
+
+# Linux-PAM-1.2.1
+./configure --prefix=$PREFIX --host=${HOST} CC=${CROSS}gcc
 
 # lzo-2.09
 ./configure --prefix=$PREFIX --host=${HOST} CC=${CROSS}gcc
@@ -247,10 +288,17 @@ export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
 export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${DEPEND_LIB_DIR}/lib
 
-./configure --prefix=$PREFIX --host=${HOST} CC=${CROSS}gcc \
---disable-plugin-auth-pam
 
-make ARCH=arm install
+./configure --prefix=$PREFIX --host=${HOST} CC=${CROSS}gcc
+
+
+"remove all security path header in 
+src/auth-pam/auth-pam.c
+and
+include/pam_appl.h
+include/_pam_types.h
+"
+make install
 
 
 #=======================================================================
@@ -410,8 +458,14 @@ CC=${CROSS}gcc
 make install
 
 #zlib-1.2.8
-./configure --prefix=$PREFIX \
-CC=${CROSS}gcc
+export CC=${CROSS}gcc
+export CXX=${CROSS}g++
+export AR=${CROSS}ar
+export RANLIB=${CROSS}ranlib
+export STRIP=${CROSS}strip
+export LD=${CROSS}ld 
+
+./configure --prefix=$PREFIX
 
 make
 make install
@@ -607,7 +661,7 @@ make install
 
 
 
-#============= cppcms-1.0.5 NOT OK ====================
+#============= cppcms-1.0.5 (cross compile NOT OK) ====================
 "Create ToolChain.cmake file"
 SET(CMAKE_SYSTEM_NAME arm-linux)  
 SET(CMAKE_C_COMPILER  /opt/Xilinx/14.3/ISE_DS/EDK/gnu/arm/lin64/bin/arm-xilinx-linux-gnueabi-gcc)  
@@ -634,9 +688,12 @@ cd release
 cmake -DCMAKE_BUILD_TYPE=Release \
 -DCMAKE_TOOLCHAIN_FILE=ToolChain.cmake \
 -DDISABLE_ICU_LOCALE=ON \
--DCMAKE_ISTALL_PREFIX=$PREFIX ..
+-DCMAKE_INSTALL_PREFIX=$PREFIX ..
 
-
+CMake Error: The following variables are used in this project, but they are set to NOTFOUND.
+Please set them or make sure they are set and tested correctly in the CMake files:
+PTHREAD_INC
+   used as include directory in directory /home/ninhld/Zynq706/Project/FIREWALL/web-admin/cppcms-1.0.5/booster
 
 
 
@@ -742,17 +799,26 @@ CC=${CROSS}gcc
 "Bootstrap the code:"
 ./bootstrap.sh
 
-"Modify the configuration file (project-config.jam) to use the ARM toolchain 
+"
+Modify the configuration file (project-config.jam) to use the ARM toolchain 
 by replacing the line with “using gcc” by:
 using gcc : arm : arm-xilinx-linux-gnueabi-g++ ;
-using zlib : 1.2.8 : /home/ninhld/Zynq706/Project/FIREWALL/user/lib ;"
+"
 
 "Install the python development package:
 sudo yum install python-devel"
 
 
 "Build and install the boost libraries:"
-./bjam install toolset=gcc-arm --prefix=$PREFIX
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
+ZLIB_SOURCE_DIR=/home/ninhld/Zynq706/Project/FIREWALL/IDS-IPS/zlib-1.2.8
+BZIP2_SOURCE_DIR=/home/ninhld/Zynq706/Project/FIREWALL/web-admin/bzip2-1.0.6
+
+./bjam toolset=gcc-arm --prefix=$PREFIX \
+-sZLIB_SOURCE=${ZLIB_SOURCE_DIR} \
+-sBZIP2_SOURCE=${BZIP2_SOURCE_DIR} \
+--without-python \
+install
 
 #============= Wt ==============================
 mkdir release
@@ -804,7 +870,7 @@ LIBS="-Wl,-rpath-link -Wl,$DEPEND_LIB_DIR/lib"
 arm-xilinx-linux-gnueabi-g++ hello.C -o hello ${CFLAGS} ${LDFLAGS} ${LIBS}
 
 "run"
-./hello --docroot . --http-address 0.0.0.0 --http-port 8080  #ok
+./hello --docroot . --http-address 0.0.0.0 --http-port 80  #ok
 
 
 
@@ -899,7 +965,141 @@ make
 
 
 
-#build and run application
+#======= build and run example application (host server OK, target server NOT OK) ================
+cd src/examples/echo
+make
+
+
+cp -rf /opt/nfs/etc/omniORB.cfg /etc/
+export OMNIORB_CONFIG=/etc/omniORB.cfg
+
+"on server"
+./eg2_impl
+-> IOR:0123456
+
+"on target"
+./eg2_clt IOR:0123456
+
+
+#=======================================================================
+# libxml2-2.9.1
+#=======================================================================
+PYTHON_SOURCE_DIR=/home/ninhld/Zynq706/Project/FIREWALL/soft-admin/Python-2.7.3/Python-2.7.3
+
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc \
+--with-python=${PYTHON_SOURCE_DIR}
+
+
+
+#=======================================================================
+# bzip2-1.0.6
+#=======================================================================
+Modify Makefile :
+                     
+		  # To assist in cross-compiling
+		   CC=arm-linux-gnueabihf-gcc
+		   AR=arm-linux-gnueabihf-ar
+		   RANLIB=arm-linux-gnueabihf-ranlib
+		   LDFLAGS=
+		   ####I add so file,because boost lib need so lib,not static library.
+		   BZLIB=libbz2.so.1.0.6
+						
+		   #CLAGS=-Wall -Winline -O2 -g $(BIGFILES)
+		   CLAGS=-Wall -Winline -O2 -g $(BIGFILES) -fPIC
+		   SFLAGS=-shared 
+		   PREFIX=$(PWD)/_install
+		   
+		   #all: libbz2.a bzip2 bzip2recover test
+		   all: libbz2.a  $(BZLIB)
+
+		   $(BZLIB): $(OBJS)
+			   $(CC) $(SFLAGS) $(LDFLAGS) -o $@ $^
+
+		   ####bzip2 and bzip2recover can not be execute on the ubuntu host,they are binary based arm architecture. 
+		   #install: bzip2 bzip2recover
+           install: $(BZLIB)
+
+
+  
+			#cp -f bzip2 $(PREFIX)/bin/bzip2
+			#cp -f bzip2 $(PREFIX)/bin/bunzip2
+			#cp -f bzip2 $(PREFIX)/bin/bzcat
+			#cp -f bzip2recover $(PREFIX)/bin/bzip2recover
+			#chmod a+x $(PREFIX)/bin/bzip2
+			#chmod a+x $(PREFIX)/bin/bunzip2
+			#chmod a+x $(PREFIX)/bin/bzcat
+			#chmod a+x $(PREFIX)/bin/bzip2recover
+			cp -f libbz2.a $(PREFIX)/lib
+			chmod a+r $(PREFIX)/lib/libbz2.a
+			cp -f $(BZLIB) $(PREFIX)/lib
+			chmod a+r $(PREFIX)/lib/$(BZLIB)
+make
+make PREFIX=$PREFIX install
+
+
+
+
+#=======================================================================
+# xmlrpc-c-1.33.17
+#=======================================================================
+#build client on Host
+install libcurl-devel
+install libxml2-devel
+install openssl-devel
+install libxml2-devel   
+  
+./configure --prefix=`pwd`/install
+make
+
+#cross compiling on target 
+./configure
+make CC=gcc CXX=g++ -C lib/expat/gennmtab
+
+
+
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc \
+CXX=${CROSS}g++
+
+make
+
+
+
+#build client/server app
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/soft-admin/xmlrpc-c-1.33.17/install
+export CFLAGS=-I${DEPEND_LIB_DIR}/include
+export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
+export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+LIBS="-Wl,-rpath-link -Wl,$DEPEND_LIB_DIR/lib -lxmlrpc -lxmlrpc_client"
+gcc xmlrpc_sample_add_client.c ${CFLAGS} ${LDFLAGS} ${LIBS}
+
+
+#=======================================================================
+# libsoap-1.1.0
+# Dependency: libxml2, openssl
+#=======================================================================
+
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc
+
+"Modify config.h which have just is generated
+comment #define malloc rpl_malloc
+"
+
+make
+make install
+
+
+
+
+#=======================================================================
+# gsoap-2.8
+# Dependency: openssl
+#=======================================================================
 DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
 export CFLAGS=-I${DEPEND_LIB_DIR}/include
 export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
@@ -907,25 +1107,58 @@ export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
 export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
 export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
 export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
-LIBS="-Wl,-rpath-link -Wl,$DEPEND_LIB_DIR/lib"
 
-
-arm-xilinx-linux-gnueabi-g++ eg1.cpp -o eg1 ${CFLAGS} ${LDFLAGS} ${LIBS}
-
-
-
+"buid soapcpp2 for host"
+./configure
+make CC=gcc CXX=g++ -C gsoap/src
 
 
 
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc \
+CXX=${CROSS}g++ \
+--with-openssl=${DEPEND_LIB_DIR}
+
+"Modify config.h which have just is generated
+comment #define malloc rpl_malloc
+Note: fixbug ::malloc has not been declared
+"
+
+make 
+make install
+
+
+#build example
+
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/soft-admin/gsoap-2.8-host/install
+export CFLAGS=-I${DEPEND_LIB_DIR}/include
+export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
+export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+export LIBS="-lm -lssl -lcrypto -lpthread"
+STDSOAP2_PATH=/home/ninhld/Zynq706/Project/FIREWALL/soft-admin/gsoap-2.8-host/gsoap
+
+soapcpp2 -c calc.h
+gcc -o calcclient calcclient.c ${STDSOAP2_PATH}/stdsoap2.c soapC.c soapClient.c ${CFLAGS} ${LDFLAGS} ${LIBS}
+gcc -o calcserver calcserver.c ${STDSOAP2_PATH}/stdsoap2.c soapC.c soapServer.c ${CFLAGS} ${LDFLAGS} ${LIBS}
 
 
 
+soapcpp2 -c ssl.h
+gcc -DWITH_OPENSSL -o sslclient sslclient.c ${STDSOAP2_PATH}/stdsoap2.c soapC.c soapClient.c ${CFLAGS} ${LDFLAGS} ${LIBS}
+gcc -DWITH_OPENSSL -o sslserver sslserver.c ${STDSOAP2_PATH}/stdsoap2.c soapC.c soapServer.c ${CFLAGS} ${LDFLAGS} ${LIBS}
 
+Compilation in C (see samples/calc):
+    soapcpp2 -c calc.h
+    cc -o calcclient calcclient.c stdsoap2.c soapC.c soapClient.c
+    cc -o calcserver calcserver.c stdsoap2.c soapC.c soapServer.c
 
-
-
-
-
+Compilation in C++ (see samples/calc++):
+    soapcpp2 -i calc.h
+    cc -o calcclient++ calcclient.cpp stdsoap2.cpp soapC.cpp soapcalcProxy.cpp
+    cc -o calcserver++ calcserver.cpp stdsoap2.cpp soapC.cpp soapcalcService.cpp
 
 #=======================================================================
 # export environment
@@ -938,12 +1171,16 @@ export PREFIX=`pwd`/install
 
 
 export CC=${CROSS}gcc
+export CXX=${CROSS}g++
 export AR=${CROSS}ar
 export RANLIB=${CROSS}ranlib
+export STRIP=${CROSS}strip
 export LD=${CROSS}ld 
 
 
 DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/soft-admin/omniORB-4.2.0-host/install
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/soft-admin/xmlrpc-c-1.33.17/install-host
 export CFLAGS=-I${DEPEND_LIB_DIR}/include
 export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
 export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
