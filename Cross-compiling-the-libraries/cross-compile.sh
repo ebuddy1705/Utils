@@ -407,7 +407,7 @@ make install
 --with-ld=${CROSS}ld \
 --with-endianness=little --with-defaults --without-perl-modules \
 --build=x86_64-linux --host=${HOST} --target=${HOST} \
---without-openssl --with-logfile="/var/log/ snmpd.log" \
+--without-openssl --with-logfile="/var/log/snmpd.log" \
 --with-default-snmp-version=2 --disable-mib-loading \
 --with-mib-modules="mibII ip-mib if-mib tcp-mib udp-mib ucd_snmp target agent_mibs notification-log-mib snmpv3mibs notification"
 
@@ -527,7 +527,10 @@ touch src/cf_gen
 make CC=${CROSS}gcc \
 AR=${CROSS}ar \
 RANLIB=${CROSS}ranlib \
-LD=${CROSS}ld
+LD=${CROSS}ld \
+--enable-delay-pools --enable-cache-digests \
+--enable-poll --enable-truncate \
+--enable-removal-policies
 
 
 
@@ -1131,7 +1134,7 @@ make install
 #build example
 
 DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/soft-admin/gsoap-2.8-host/install
-export CFLAGS=-I${DEPEND_LIB_DIR}/include
+export CFLAGS="-I${DEPEND_LIB_DIR}/include -DWITH_OPENSSL"
 export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
 export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
 export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
@@ -1160,6 +1163,186 @@ Compilation in C++ (see samples/calc++):
     cc -o calcclient++ calcclient.cpp stdsoap2.cpp soapC.cpp soapcalcProxy.cpp
     cc -o calcserver++ calcserver.cpp stdsoap2.cpp soapC.cpp soapcalcService.cpp
 
+
+#=======================================================================
+# Virus engine with Squid : squidclamav-6.13
+# Dependency: 
+#=======================================================================
+
+#clamav-0.98.7
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
+export CFLAGS="-I${DEPEND_LIB_DIR}/include -I${DEPEND_LIB_DIR}/include/libxml2"
+export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
+export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+
+"
+add 
+#include <sys/socket.h>
+#include <sys/un.h>
+to proto.c to fixbug 
+invalid application of 'sizeof' to incomplete type 'struct sockaddr_un'   
+"
+
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc \
+--with-zlib=${DEPEND_LIB_DIR} \
+--with-xml=${DEPEND_LIB_DIR}
+
+
+#c_icap-0.4.1
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
+export CFLAGS=-I${DEPEND_LIB_DIR}/include
+export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
+export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc \
+ac_cv_10031b_ipc_sem=yes \
+ac_cv_fcntl=yes
+
+
+#squidclamav-6.13
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
+export CFLAGS=-I${DEPEND_LIB_DIR}/include
+export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
+export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc \
+--with-c-icap=${DEPEND_LIB_DIR}
+
+"
+comment data->error_page->hasalldata = 1; in squidclamav.c
+"
+
+
+
+#=======================================================================
+# URL Filter squidGuard-1.4  
+# Dependency: db-4.6.21
+#=======================================================================
+#db-4.6.21
+cd build_unix
+
+../dist/configure --prefix=$PREFIX --host=${HOST} \
+--enable-compat185 \
+--enable-dbm       \
+--disable-static   \
+--enable-cxx \
+CC=${CROSS}gcc \
+CXX=${CROSS}g++
+
+
+#squidguard-1.4 (NOT OK)
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
+export CFLAGS=-I${DEPEND_LIB_DIR}/include
+export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
+export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+
+"only one time"
+patch -Nru -i ../squidguard-1.4-cross-compile.patch
+
+
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc \
+--with-db=${DEPEND_LIB_DIR}
+
+
+--with-db-inc=${DEPEND_LIB_DIR}/include \ 
+--with-db-lib=${DEPEND_LIB_DIR}/lib \
+--with-db=${DEPEND_LIB_DIR} \
+
+
+
+
+#=======================================================================
+# URL Filter dansguardian-2.10.0.1  (the same as squidguard)
+# Dependency: zlib, libiconv, icap, ...
+# Dansguardian is more widely used than Squidguard.
+# dans does everything squidguard does + the heuristics
+#=======================================================================
+#dansguardian-2.10.0.1
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
+export CFLAGS=-I${DEPEND_LIB_DIR}/include
+export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
+export LDFLAGS="-L${DEPEND_LIB_DIR}/lib -liconv"
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+
+
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc \
+CXX=${CROSS}g++ \
+--enable-commandline \
+--enable-static-zlib \
+--enable-clamd \
+--enable-icap \
+--enable-ntlm \
+--enable-email 	
+
+"add #include <stdio.h> into 
+fancy.cpp, icapscan.cpp, commandlinescan.cpp 
+to fixbug 
+error: ‘snprintf’ was not declared in this scope"
+
+make install
+
+
+
+
+
+
+#=======================================================================
+# GepIP
+# Dependency: 
+#=======================================================================
+#libtap
+make CC="${CROSS}gcc" AR="${CROSS}ar" RANLIB="${CROSS}ranlib" \
+PREFIX=${PREFIX} \
+install
+#libmaxminddb (NOT OK)
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc
+
+
+"Modify config.h which have just is generated
+comment #define malloc rpl_malloc
+"
+
+
+
+#geoip-api-c
+#geoip dependency libmaxminddb if this use .mmdb format database
+# in normal it use .dat format
+./configure --prefix=$PREFIX --host=${HOST} \
+CC=${CROSS}gcc
+
+
+"search and remove -Dmalloc=rpl_malloc -Drealloc=rpl_realloc 
+in all Makefile"
+
+
+make install
+
+
+
+
+
+
+
 #=======================================================================
 # export environment
 #=======================================================================
@@ -1179,13 +1362,25 @@ export LD=${CROSS}ld
 
 
 DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/user
-DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/soft-admin/omniORB-4.2.0-host/install
-DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/soft-admin/xmlrpc-c-1.33.17/install-host
 export CFLAGS=-I${DEPEND_LIB_DIR}/include
 export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
 export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
 export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
 export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
 export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+
+
+
+
+DEPEND_LIB_DIR=/home/ninhld/Zynq706/Project/FIREWALL/soft-admin/gsoap-2.8-host/install
+export CFLAGS="-I${DEPEND_LIB_DIR}/include  -DWITH_OPENSSL"
+export CPPFLAGS=-I${DEPEND_LIB_DIR}/include
+export LDFLAGS=-L${DEPEND_LIB_DIR}/lib
+export PKG_CONFIG_PATH=${DEPEND_LIB_DIR}/lib/pkgconfig
+export LD_LIBRARY_PATH=${DEPEND_LIB_DIR}/lib
+export PATH=$PATH:${DEPEND_LIB_DIR}/bin:${DEPEND_LIB_DIR}/sbin
+export LIBS="-lm -lssl -lcrypto -lpthread"
+
+
 
 
