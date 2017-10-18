@@ -4,7 +4,7 @@
 # make.sh clean app_name
 # make.sh cleanall
 
-. ./tools/Config.sh
+. ./tools/Config
 
 # install before build   
 # yum install git wget bison flex glib-devel glib2-devel perl-Text-CSV_XS perl-ExtUtils-MakeMaker intltool.noarch 
