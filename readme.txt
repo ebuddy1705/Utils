@@ -135,6 +135,8 @@
 	
 	git remote add origin https://github.com/eslinux/Utils.git
 	
+	git add -A   => update current state (added/removed file)
+	
 	git push -u origin master
 	
 	
