@@ -6,6 +6,19 @@
 
 . ./tools/Config
 
+
+if [ ! -d "${INFO_DIR}" ]; then
+	mkdir ${INFO_DIR}
+fi
+if [ ! -d "${SRC_DIR}" ]; then
+	mkdir ${SRC_DIR}
+fi
+
+
+
+
+
+
 # install before build   
 # yum install git wget bison flex glib-devel glib2-devel perl-Text-CSV_XS perl-ExtUtils-MakeMaker intltool.noarch 
 BASE_APPLIST=(makescripts \

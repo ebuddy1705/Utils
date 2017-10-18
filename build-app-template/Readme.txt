@@ -26,7 +26,7 @@ Before build you need to check some parameter in toos/Config file:
 - ROOTFS_DIR
 - TOOLCHAIN_DIR
 - CROSS
-- TOOLCHAIN_FILE
+- TOOLCHAIN_FILE (arm-toolchain.cmake)
 - PREFIX (default is install folder)
 - URL_SOURCE_DL
 
