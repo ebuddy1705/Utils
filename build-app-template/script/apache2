@@ -1,0 +1,79 @@
+VER        = 2.2.29
+APP_DIR    = httpd-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+md5_$(DL_FILE) = 579342fdeaa7b8b68d17fee91f8fab6e
+
+#obj:= _download_$(DL_FILE)
+#DL_FILE    = httpd-2.2.2-config-1.patch
+#md5_$(DL_FILE) = e02a3ec5925eb9e111400b9aa229f822
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR);\
+	patch -Np1 -i $(PATCHES_DIR)/httpd-2.2.2-config-1.patch;\
+	patch -Np1 -i $(PATCHES_DIR)/httpd-2.2.29.makefile.in.patch
+	
+	### Add IPFire's layout, too
+	$(Q)echo "# IPFire layout" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "<Layout IPFire>" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    prefix:             /usr" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    exec_prefix:        /usr" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    bindir:             /usr/bin" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    sbindir:            /usr/sbin" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    libdir:             /usr/lib" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    libexecdir:         /usr/lib/apache" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    mandir:             /usr/share/man" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    sysconfdir:         /etc/httpd/conf" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    datadir:            /srv/web/ipfire" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    installbuilddir:    /usr/lib/apache/build" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    errordir:           /srv/web/ipfire/error" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    iconsdir:           /srv/web/ipfire/icons" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    htdocsdir:          /srv/web/ipfire/htdocs" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    manualdir:          /srv/web/ipfire/manual" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    cgidir:             /srv/web/ipfire/cgi-bin" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    includedir:         /usr/include/apache" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    localstatedir:      /srv/web/ipfire" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    runtimedir:         /var/run" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    logfiledir:         /var/log/httpd" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "    proxycachedir:      /var/cache/apache/proxy" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	$(Q)echo "</Layout>" >> $(SRC_DIR)/$(APP_DIR)/config.layout
+	
+	$(Q)echo " =========== $(ROOTFS_DIR)/usr ======================"
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && apr_cv_tcp_nodelay_with_cork="yes" \
+	ap_cv_void_ptr_lt_long="no" \
+	ac_cv_struct_rlimit="yes" \
+	ac_cv_sizeof_struct_iovec="8" \
+	ac_cv_file__dev_zero="yes" \
+	ac_cv_func_setpgrp_void="yes" \
+	with_ssl="$(ROOTFS_DIR)/usr/" \
+	with_z="$(ROOTFS_DIR)/usr/" \
+	./configure \
+	      CC=$(CROSS)-gcc \
+	      --build=x86_64-pc-none \
+	      --target=$(CROSS) \
+	      --host=$(CROSS) \
+	      --with-included-apr \
+	      --enable-ssl --enable-mods-shared=all --enable-proxy \
+	      --enable-layout=IPFire
+	      
+	$(Q)$(MAKE) -C $(SRC_DIR)/$(APP_DIR)
+	$(Q)$(MAKE) DESTDIR=$(ROOTFS_DIR) -C $(SRC_DIR)/$(APP_DIR) install
+	
+	# Install apache config
+	$(Q)-cp -rf $(CFG_DIR)/httpd/* $(ROOTFS_DIR)/etc/httpd/conf
+	$(Q)-echo "ServerName ipfire" > $(CONFIG_ROOT)/main/hostname.conf
+	$(Q)-ln -sf /var/ipfire/main/hostname.conf $(ROOTFS_DIR)/etc/httpd/conf/
+	$(Q)-sed -i "s:LoadModule php5_module:#LoadModule php5_module:" $(ROOTFS_DIR)/etc/httpd/conf/loadmodule.conf
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)touch $@
+
+_clean: 
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

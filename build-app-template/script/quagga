@@ -1,0 +1,57 @@
+
+
+
+
+VER        = 0.99.22.4
+APP_DIR    = quagga-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#EXTRACT
+	$(Q)-rm -rf $(SRC_DIR)/$(APP_DIR) && tar -xzf $(EXTPKGS_DIR)/$(DL_FILE) -C $(SRC_DIR)
+	
+	#CONFIGURE
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib" \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	./configure --prefix=/usr \
+	--sysconfdir=/etc/quagga \
+	--enable-user=quagga \
+	--enable-group=quagga \
+	--enable-vty-group=quagga \
+	--host=$(CROSS) CC=$(CROSS)-gcc
+	
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make ARCH=arm
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) ARCH=arm install
+	
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/log/quagga
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/ipfire/quagga
+
+	$(Q)cp -rf $(CFG_DIR)/quagga/etc/* $(ROOTFS_DIR)/etc/quagga/
+	$(Q)cp -rf $(CFG_DIR)/quagga/quagga $(ROOTFS_DIR)/etc/sysconfig/
+	$(Q)cp -rf $(CFG_DIR)/quagga/quagga-settings $(ROOTFS_DIR)/var/ipfire/quagga/
+	
+	$(Q)-chown quagga.quagga $(ROOTFS_DIR)/etc/quagga/*.conf
+	$(Q)-chmod 777 $(ROOTFS_DIR)/etc/quagga/*.conf
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

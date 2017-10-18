@@ -1,0 +1,77 @@
+diff -Nuarp Python-2.7.10-ori/Makefile.pre.in Python-2.7.10/Makefile.pre.in
+--- Python-2.7.10-ori/Makefile.pre.in	2015-05-31 00:36:26.058965356 +0200
++++ Python-2.7.10/Makefile.pre.in	2015-05-31 00:38:04.221738153 +0200
+@@ -234,6 +234,7 @@ LIBFFI_INCLUDEDIR=	@LIBFFI_INCLUDEDIR@
+ ##########################################################################
+ # Parser
+ PGEN=		Parser/pgen$(EXE)
++PGEN_FOR_BUILD= $(PGEN)
+ 
+ PSRCS=		\
+ 		Parser/acceler.c \
+@@ -487,19 +488,13 @@ platformspecificmods: $(BUILDPYTHON) sha
+ 			cp $(srcdir)/Lib/plat-generic/regen $(srcdir)/Lib/$(PLATDIR)/regen; \
+ 		fi \
+ 	fi
+-	@EXE="$(BUILDEXE)"; export EXE; \
+-	PATH="`pwd`:$$PATH"; export PATH; \
+-	PYTHONPATH="$(srcdir)/Lib:$(abs_builddir)/`cat pybuilddir.txt`"; export PYTHONPATH; \
++	@PYTHONPATH="$(HOSTPYTHONPATH)"; export PYTHONPATH; \
+ 	if [ -n "$(MULTIARCH)" ]; then MULTIARCH=$(MULTIARCH); export MULTIARCH; fi; \
+-	if [ "$(build)" = "$(host)" ]; then \
+-	  PYTHON_FOR_BUILD="$(BUILDPYTHON)"; \
+-	else \
+-	  PYTHON_FOR_BUILD="$(PYTHON_FOR_BUILD)"; \
+-	fi; export PYTHON_FOR_BUILD; \
++	PYTHON_FOR_BUILD="$(PYTHON_FOR_BUILD)"; export PYTHON_FOR_BUILD; \
+ 	cd $(srcdir)/Lib/$(PLATDIR); \
+ 	$(RUNSHARED) ./regen || exit 1; \
+ 	for module in *.py; do \
+-		$(RUNSHARED) $(BUILDPYTHON) -c "with open('$$module', 'rb') as module: compile(module.read(), '$$module', 'exec')" || exit 1; \
++		$(RUNSHARED) $(abs_builddir)/$(PYTHON_FOR_BUILD) -c "with open('$$module', 'rb') as module: compile(module.read(), '$$module', 'exec')" || exit 1; \
+ 	done
+ 
+ # Build static library
+@@ -637,7 +632,7 @@ Modules/pwdmodule.o: $(srcdir)/Modules/p
+ $(GRAMMAR_H): $(GRAMMAR_INPUT) $(PGENSRCS)
+ 		@$(MKDIR_P) Include
+ 		$(MAKE) $(PGEN)
+-		$(PGEN) $(GRAMMAR_INPUT) $(GRAMMAR_H) $(GRAMMAR_C)
++		$(PGEN_FOR_BUILD) $(GRAMMAR_INPUT) $(GRAMMAR_H) $(GRAMMAR_C)
+ $(GRAMMAR_C): $(GRAMMAR_H) $(GRAMMAR_INPUT) $(PGENSRCS)
+ 		$(MAKE) $(GRAMMAR_H)
+ 		touch $(GRAMMAR_C)
+@@ -1081,27 +1076,27 @@ libinstall:	build_all $(srcdir)/Modules/
+ 		$(INSTALL_DATA) $(srcdir)/Modules/xxmodule.c \
+ 			$(DESTDIR)$(LIBDEST)/distutils/tests ; \
+ 	fi
+-	PYTHONPATH=$(DESTDIR)$(LIBDEST)  $(RUNSHARED) \
++	PYTHONPATH=$(HOSTPYTHONPATH)  $(RUNSHARED) \
+ 		$(PYTHON_FOR_BUILD) -Wi -tt $(DESTDIR)$(LIBDEST)/compileall.py \
+ 		-d $(LIBDEST) -f \
+ 		-x 'bad_coding|badsyntax|site-packages|lib2to3/tests/data' \
+ 		$(DESTDIR)$(LIBDEST)
+-	PYTHONPATH=$(DESTDIR)$(LIBDEST) $(RUNSHARED) \
++	PYTHONPATH=$(HOSTPYTHONPATH) $(RUNSHARED) \
+ 		$(PYTHON_FOR_BUILD) -Wi -tt -O $(DESTDIR)$(LIBDEST)/compileall.py \
+ 		-d $(LIBDEST) -f \
+ 		-x 'bad_coding|badsyntax|site-packages|lib2to3/tests/data' \
+ 		$(DESTDIR)$(LIBDEST)
+-	-PYTHONPATH=$(DESTDIR)$(LIBDEST)  $(RUNSHARED) \
++	-PYTHONPATH=$(HOSTPYTHONPATH)  $(RUNSHARED) \
+ 		$(PYTHON_FOR_BUILD) -Wi -t $(DESTDIR)$(LIBDEST)/compileall.py \
+ 		-d $(LIBDEST)/site-packages -f \
+ 		-x badsyntax $(DESTDIR)$(LIBDEST)/site-packages
+-	-PYTHONPATH=$(DESTDIR)$(LIBDEST) $(RUNSHARED) \
++	-PYTHONPATH=$(HOSTPYTHONPATH) $(RUNSHARED) \
+ 		$(PYTHON_FOR_BUILD) -Wi -t -O $(DESTDIR)$(LIBDEST)/compileall.py \
+ 		-d $(LIBDEST)/site-packages -f \
+ 		-x badsyntax $(DESTDIR)$(LIBDEST)/site-packages
+-	-PYTHONPATH=$(DESTDIR)$(LIBDEST) $(RUNSHARED) \
++	-PYTHONPATH=$(HOSTPYTHONPATH) $(RUNSHARED) \
+ 		$(PYTHON_FOR_BUILD) -m lib2to3.pgen2.driver $(DESTDIR)$(LIBDEST)/lib2to3/Grammar.txt
+-	-PYTHONPATH=$(DESTDIR)$(LIBDEST) $(RUNSHARED) \
++	-PYTHONPATH=$(HOSTPYTHONPATH) $(RUNSHARED) \
+ 		$(PYTHON_FOR_BUILD) -m lib2to3.pgen2.driver $(DESTDIR)$(LIBDEST)/lib2to3/PatternGrammar.txt
+ 
+ python-config: $(srcdir)/Misc/python-config.in

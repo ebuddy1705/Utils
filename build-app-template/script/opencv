@@ -1,0 +1,36 @@
+#!/bin/bash
+. ./tools/Config
+
+VER=2.4.13
+APP_DIR=opencv-${VER}
+#DL_FROM=${URL_SOURCE_DL}
+DL_FILE=${APP_DIR}.zip
+#md5="44d667c142d7cda120332623eab69f40"
+
+
+
+uncompress ${EXTPKGS_DIR} ${DL_FILE}
+
+
+
+cd ${SRC_DIR}/${APP_DIR}
+rm -rf release
+mkdir release  
+cd release
+
+#-DWITH_JPEG=OFF because this lib is error
+cmake -DWITH_GTK=OFF  \
+-DENABLE_PRECOMPILED_HEADERS=OFF \
+-DCMAKE_BUILD_TYPE=RELEASE \
+-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE \
+-DWITH_JPEG=OFF \
+-DCMAKE_INSTALL_PREFIX=$PREFIX \
+..  #chu y hai dau cham  
+   
+make -j4 && make install && exit 0
+ 
+
+
+
+#exit 0  #=> build ok
+#exit 1  #=> build fail

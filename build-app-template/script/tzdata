@@ -1,0 +1,46 @@
+
+
+VER        = 2015d
+TZDATA_VER = $(VER)
+TZCODE_VER = $(VER)
+APP_DIR    = tzdata-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+
+FILES      = africa antarctica asia australasia europe \
+	northamerica southamerica pacificnew etcetera backward
+	
+
+md5_tzdata$(TZDATA_VER).tar.gz = b595bdc4474b8fc1a15cffc67c66025b
+md5_tzcode$(TZCODE_VER).tar.gz = 4008a3abc025a398697b2587c48258b9
+
+obj:= _download_tzdata$(TZDATA_VER).tar.gz _download_tzcode$(TZCODE_VER).tar.gz _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-rm -rf $(SRC_DIR)/$(APP_DIR)
+	$(Q)mkdir -pv $(SRC_DIR)/$(APP_DIR)/tzdata$(TZDATA_VER) $(SRC_DIR)/$(APP_DIR)/tzcode$(TZCODE_VER)
+	$(Q)tar axf $(DL_DIR)/tzdata$(TZDATA_VER).tar.gz -C $(SRC_DIR)/$(APP_DIR)
+	$(Q)tar axf $(DL_DIR)/tzcode$(TZCODE_VER).tar.gz -C $(SRC_DIR)/$(APP_DIR)
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && mkdir -pv zoneinfo/{,posix,right}
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && zic -y ./yearistype -d zoneinfo -L /dev/null -p GMT $(FILES)
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && zic -y ./yearistype -d zoneinfo/posix -L /dev/null $(FILES)
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && zic -y ./yearistype -d zoneinfo/right -L leapseconds $(FILES)
+
+	$(Q)rm -rf $(ROOTFS_DIR)/usr/share/zoneinfo
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && cp -prd zoneinfo $(ROOTFS_DIR)/usr/share
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -p -m 644 zone.tab iso3166.tab $(ROOTFS_DIR)/usr/share/zoneinfo
+
+	$(Q)rm -vf $(ROOTFS_DIR)/usr/share/zoneinfo/localtime
+	$(Q)rm -vf $(ROOTFS_DIR)/etc/localtime
+	$(Q)cp -vf $(ROOTFS_DIR)/usr/share/zoneinfo/Asia/Ho_Chi_Minh $(ROOTFS_DIR)/etc/localtime
+	$(Q)chmod 755 $(ROOTFS_DIR)/etc/localtime
+	
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

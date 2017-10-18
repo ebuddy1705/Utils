@@ -1,0 +1,39 @@
+
+PROG       = ebtables
+PAK_VER    = 2
+
+DEPS       = ""
+
+
+
+
+VER        = 2.0.10-4
+APP_DIR    = ebtables-v$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 506742a3d44b9925955425a659c1a8d0
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make CC=$(CROSS)-gcc CFLAGS="-Wall"
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make CC=$(CROSS)-gcc CFLAGS="-Wall" DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+

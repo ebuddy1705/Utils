@@ -1,0 +1,89 @@
+#!/bin/bash
+
+
+
+APP_DIR=$(pwd)
+SRC_DIR=${APP_DIR}/srcdir
+INFO_DIR=${APP_DIR}/info
+SCRIPT_DIR=${APP_DIR}/script
+PATCHES_DIR=${APP_DIR}/patches
+TOOLS_DIR=${APP_DIR}/tools
+EXTPKGS_DIR=${APP_DIR}/extpkgs
+
+#depend on you target platform
+ROOTFS_DIR=""
+if [ "${TOOLCHAIN_DIR}" = "" ]; then
+	export TOOLCHAIN_DIR=/opt/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin
+	export PATH=$PATH:${TOOLCHAIN_DIR}
+fi
+CROSS=arm-linux-gnueabihf
+	
+
+
+TOOLCHAIN_FILE=${TOOLS_DIR}/arm-toolchain.cmake
+PREFIX=${APP_DIR}/install
+
+
+NUM_DL_RETRIES=3
+URL_SOURCE_DL=http://source.ipfire.org/source-2.x
+
+
+
+
+#return 0 -> OK, 1 -> fail
+#uncompress $libdir $libfilename
+#retval=$?  => get return value
+uncompress(){
+	if [ -f "${INFO_DIR}/${2}.unflag" ]; then
+		return 1
+	fi
+	
+	echo "uncompress $2"
+	local file_ext=$(echo $2 |awk -F . '{if (NF>1) {print $NF}}')
+	
+	#echo ${file_ext}
+	case "${file_ext}" in
+		x86_64|i686|i586)
+			echo "i586"
+			;;
+
+		tar)
+			tar xf $1/$2 -C ${SRC_DIR}
+			;;
+		zip)
+			echo "unzip xf $1/$2 -d ${SRC_DIR}"
+			unzip $1/$2 -d ${SRC_DIR}
+			;;
+
+		gz)
+			tar xzf $1/$2 -C ${SRC_DIR}
+			;;
+
+		bz2)
+			tar xjf $1/$2 -C ${SRC_DIR}
+			;;
+
+		*)
+			echo "Cannot guess build architecture"
+			;;
+	esac
+	
+	touch "${INFO_DIR}/${2}.unflag"
+	return 0
+}
+
+#return 0 -> OK, 1 -> fail
+#download_file $dlfrom $filename
+#retval=$?  => get return value
+download_file(){
+	local ret=1
+	if [ ! -f "${INFO_DIR}/${2}.dlflag" ]; then
+		echo "===== Downloading ${2} ======="
+		wget -T 60 -t 1 -nv ${1}/${2} -O ${SRC_DIR}/${2} && touch "${INFO_DIR}/${2}.dlflag" && ret=0
+	fi
+	
+	return $ret
+}
+
+
+

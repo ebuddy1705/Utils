@@ -1,0 +1,32 @@
+
+SLOGAN     = An Centic Firewall Solution
+DOWNLOAD_URL = http://centic.vn
+
+
+
+VER        = ipfire
+APP_DIR    = installer
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+CFLAGS=-I$(ROOTFS_DIR)/usr/include  -I$(ROOTFS_DIR)/usr/include/blkid -I$(ROOTFS_DIR)/usr/include/pci -std=gnu99 -Wformat=2 -Wformat-security -Wformat-nonliteral -Werror=overflow -fno-strict-aliasing -fstack-protector -fPIE --param=ssp-buffer-size=4
+LDFLAGS=-L$(ROOTFS_DIR)/usr/lib 
+LIBS=-lnewt -lslang -lpci -lblkid -lsmooth -ludev -luuid
+
+SOURCE=hw.h hw.c main.c
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)rm -rf $(SRC_DIR)/$(APP_DIR) && cp -rf $(CENTIC_SRC)/$(APP_DIR) $(SRC_DIR)
+	$(Q)cp -rf $(CENTIC_INFO_DIR)/centic-info.h $(SRC_DIR)/$(APP_DIR)
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && $(CROSS)-gcc $(CFLAGS) $(LDFLAGS) $(LIBS) $(SOURCE) -o $(APP_DIR)
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && cp -rf $(APP_DIR) $(ROOTFS_DIR)/usr/bin/
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

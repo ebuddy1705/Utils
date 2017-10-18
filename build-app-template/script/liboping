@@ -1,0 +1,66 @@
+
+
+VER        = 1.3.4
+APP_DIR    = liboping-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+md5_$(DL_FILE) = 208e185f75f9f8ac96e508bd9e17ef61
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+
+	#CONFIGURE
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc LD=$(CROSS)-ld
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's/src bindings/src/g' Makefile
+	
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make AM_CFLAGS="-Wall" CC=$(CROSS)-gcc LD=$(CROSS)-ld
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	
+	
+	#============== build PERL ====================
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl && PERL5LIB=$(ROOTFS_DIR)/usr/share/perl5:$(ROOTFS_DIR)/usr/lib/perl5 perl Makefile.PL \
+						    OPING_PREFIX=$(ROOTFS_DIR)/usr/include \
+						    PREFIX=$(ROOTFS_DIR)/usr \
+						    TOP_BUILDDIR=$(SRC_DIR)/$(APP_DIR) \
+						    TARGET_LIBDIR=$(ROOTFS_DIR)/usr/lib \
+						    CC=$(CROSS)-gcc \
+						    AR=$(CROSS)-ar \
+						    LD=$(CROSS)-gcc  \
+						    FULL_AR=$(CROSS)-ar \
+						    LDDLFLAGS="-L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE/ -shared -fPIC -O2 -g -pipe -Wall -L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usrlib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usrlib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    OSNAME="$(PERL_TARGET)" \
+						    OSVERS="3.14" \
+						    SITELIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    SITEARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    VENDORARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    VENDORLIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_LIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_ARCHLIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    CCFLAGS="-D_REENTRANT -D_GNU_SOURCE -fno-strict-aliasing -pipe -fstack-protector -I$(ROOTFS_DIR)/usr/include" \
+						    OPTIMIZE="-O2 -g -pipe -Wall" \
+						    INC=""
+						    
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl && sed -i 's/lib64/lib/g' Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl && make install
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

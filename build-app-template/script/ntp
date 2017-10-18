@@ -1,0 +1,53 @@
+
+VER        = 4.2.8
+APP_DIR    = ntp-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 6972a626be6150db8cfbd0b63d8719e7
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc \
+	CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	--sysconfdir=/etc \
+	--disable-nls \
+	--enable-all-clocks \
+	--enable-parse-clocks \
+	--with-yielding-select=yes
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)-mkdir $(ROOTFS_DIR)/etc/ntp
+	$(Q)-chown -R ntp:ntp $(ROOTFS_DIR)/etc/ntp
+	$(Q)echo "disable monitor" > $(ROOTFS_DIR)/etc/ntp.conf
+	$(Q)echo "restrict default nomodify noquery" >>  $(ROOTFS_DIR)/etc/ntp.conf
+	$(Q)echo "server  127.127.1.0"			>> $(ROOTFS_DIR)/etc/ntp.conf
+	$(Q)echo "fudge   127.127.1.0 stratum 10"	>> $(ROOTFS_DIR)/etc/ntp.conf
+	$(Q)echo "driftfile /etc/ntp/drift"		>> $(ROOTFS_DIR)/etc/ntp.conf
+
+	#Enable it by default...
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/ipfire/time
+	$(Q)cp -vf $(CFG_DIR)/time/* $(ROOTFS_DIR)/var/ipfire/time/
+	$(Q)-chmod 644 $(ROOTFS_DIR)/var/ipfire/time/*
+	$(Q)-chown nobody:nobody $(ROOTFS_DIR)/var/ipfire/time/*
+
+	$(Q)ln -svf /usr/sbin/ntpd $(ROOTFS_DIR)/usr/bin/ntpd
+	
+	$(Q)echo "ntp  123/tcp" >> $(ROOTFS_DIR)/etc/services
+	$(Q)echo "ntp  123/udp" >> $(ROOTFS_DIR)/etc/services
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

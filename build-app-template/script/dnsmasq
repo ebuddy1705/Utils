@@ -1,0 +1,50 @@
+
+
+# We cannot use INOTIFY because our ISC reader code does not support that
+COPTS      = -DHAVE_ISC_READER -DNO_INOTIFY
+
+
+VER        = 2.75
+APP_DIR    = dnsmasq-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.xz
+md5_$(DL_FILE) = 887236f1ddde6eb57cdb9d01916c9f72
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#PATCH
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/dnsmasq-Add-support-to-read-ISC-DHCP-lease-file.patch
+	
+	#CONFIGURE
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i src/config.h \
+		-e 's|/\* #define HAVE_IDN \*/|#define HAVE_IDN|g' \
+		-e 's|/\* #define HAVE_DNSSEC \*/|#define HAVE_DNSSEC|g' \
+		-e 's|#define HAVE_DHCP|//#define HAVE_DHCP|g' \
+		-e 's|#define HAVE_DHCP6|//#define HAVE_DHCP6|g' \
+		-e 's|#define HAVE_TFTP|//#define HAVE_TFTP|g'
+	
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make  CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+					      CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+					      LDFLAGS="-L$(ROOTFS_DIR)/usr/lib  -lidn -lnettle" \
+					      PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+					      COPTS="$(COPTS)" \
+					      CC=$(CROSS)-gcc \
+					      LD=$(CROSS)-ld \
+					      PREFIX=$(ROOTFS_DIR)/usr \
+					      all install
+	$(Q)touch $(ROOTFS_DIR)/var/ipfire/dns/dnssec-timestamp
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

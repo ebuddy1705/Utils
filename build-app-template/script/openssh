@@ -1,0 +1,62 @@
+
+
+VER        = 6.8p1
+
+VER        = 6.8p1
+APP_DIR    = openssh-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 08f72de6751acfbd0892b5f003922701
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/openssh-6.8p1.patch
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i "s/lkrb5 -ldes/lkrb5/" configure
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/usr \
+	  --host=$(CROSS) \
+	  CC=${CROSS}-gcc \
+	  AR=${CROSS}-ar \
+	  CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	  LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	  PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	  --sysconfdir=/etc/ssh \
+	  --libexecdir=/usr/lib/openssh \
+	  --with-md5-passwords \
+	  --with-privsep-path=/var/empty \
+	  --disable-nls \
+	  --disable-strip \
+	  --with-superuser-path=/sbin:/usr/sbin:/bin:/usr/bin
+	  
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)tar -xzf $(EXTPKGS_DIR)/ssh_host_key.tar.gz -C $(ROOTFS_DIR)/etc/ssh
+	
+	$(Q)sed -i -e 's/^#\?Port .*$$/Port 222/' \
+	    -e 's/^#\?Protocol .*$$/Protocol 2/' \
+	    -e 's/^#\?LoginGraceTime .*$$/LoginGraceTime 30s/' \
+	    -e 's/^#\?RSAAuthentication .*$$/RSAAuthentication yes/' \
+	    -e 's/^#\?PubkeyAuthentication .*$$/PubkeyAuthentication yes/' \
+	    -e 's/^#\?PasswordAuthentication .*$$/PasswordAuthentication yes/' \
+	    -e 's/^#\?MaxStartups .*$$/MaxStartups 5/' \
+	    -e 's/^#\?IgnoreUserKnownHosts .*$$/IgnoreUserKnownHosts yes/' \
+	    -e 's/^#\?UsePAM .*$$//' \
+	    -e 's/^#\?X11Forwarding .*$$/X11Forwarding no/' \
+	    -e 's/^#\?SyslogFacility AUTH .*$$/SyslogFacility AUTH/' \
+	    -e 's/^#\?LogLevel INFO .*$$/LogLevel INFO/' \
+	    -e 's/^#\?AllowTcpForwarding .*$$/AllowTcpForwarding no/' \
+	    $(ROOTFS_DIR)/etc/ssh/sshd_config
+	    
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

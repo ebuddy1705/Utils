@@ -1,0 +1,37 @@
+
+
+
+VER        = 1.5
+APP_DIR    = sysklogd-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = e053094e8103165f98ddafe828f6ae4b
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i "s:\-fno\-strength\-reduce::" Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i "s:install_man::" Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i "s:\-s::" Makefile
+	
+	
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make CC=$(CROSS)-gcc prefix=$(ROOTFS_DIR)
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make CC=$(CROSS)-gcc prefix=$(ROOTFS_DIR) install
+	
+	
+	$(Q)-touch $(ROOTFS_DIR)/var/log/{dhcpcd.log,messages}
+	$(Q)-chmod 664 $(ROOTFS_DIR)/var/log/{dhcpcd.log,messages}
+	$(Q)-chown 0:105 $(ROOTFS_DIR)/var/log/{dhcpcd.log,messages}
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

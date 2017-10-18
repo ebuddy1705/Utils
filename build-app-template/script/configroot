@@ -1,0 +1,130 @@
+
+VER        = ipfire
+APP_DIR    = configroot
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	# Create all directories
+	$(Q)-for i in addon-lang auth backup ca certs connscheduler crls ddns dhcp dhcpc dns dnsforward \
+			ethernet extrahd/bin fwlogs fwhosts firewall isdn key langs logging mac main \
+			menu.d modem net-traffic net-traffic/templates nfs optionsfw \
+			ovpn patches pakfire portfw ppp private proxy/advanced/cre \
+			proxy/calamaris/bin qos/bin red remote sensors snort time tripwire/report \
+			updatexlrator/bin updatexlrator/autocheck urlfilter/autoupdate urlfilter/bin upnp vpn \
+			wakeonlan wireless quagga link-aggregation high-availability; do \
+	        mkdir -p $(CONFIG_ROOT)/$$i; \
+	done
+	
+	$(Q)-mkdir -p $(ROOTFS_DIR)/srv/web/ipfire/html/graphs
+	$(Q)chmod 777 -R $(ROOTFS_DIR)/srv/web/ipfire/html/graphs
+	
+	# Touch empty files
+	$(Q)-for i in auth/users backup/include.user backup/exclude.user \
+	    certs/index.txt ddns/config ddns/noipsettings ddns/settings ddns/ipcache dhcp/settings \
+	    dhcp/fixleases dhcp/advoptions dhcp/dhcpd.conf.local dns/settings dnsforward/config ethernet/aliases ethernet/settings ethernet/known_nics ethernet/scanned_nics \
+	    ethernet/wireless extrahd/scan extrahd/devices extrahd/partitions extrahd/settings firewall/settings firewall/config firewall/geoipblock firewall/input firewall/outgoing \
+	    fwhosts/customnetworks fwhosts/customhosts fwhosts/customgroups fwhosts/customservicegrp fwhosts/customgeoipgrp fwlogs/ipsettings fwlogs/portsettings \
+	    isdn/settings mac/settings main/disable_nf_sip main/hosts main/routing main/settings net-traffic/settings optionsfw/settings \
+	    ovpn/ccd.conf ovpn/ccdroute ovpn/ccdroute2 pakfire/settings portfw/config ppp/settings-1 ppp/settings-2 ppp/settings-3 ppp/settings-4 \
+	    ppp/settings-5 ppp/settings proxy/settings proxy/squid.conf proxy/advanced/settings proxy/advanced/cre/enable remote/settings qos/settings qos/classes qos/subclasses qos/level7config qos/portconfig \
+	    qos/tosconfig snort/settings tripwire/settings upnp/settings vpn/config vpn/settings vpn/ipsec.conf \
+	    vpn/ipsec.secrets vpn/caconfig wakeonlan/clients.conf wireless/config wireless/settings; do \
+	    touch $(CONFIG_ROOT)/$$i; \
+	done
+	
+	# Copy initial configfiles
+	$(Q)-cp $(CFG_DIR)/cfgroot/header.pl			$(CONFIG_ROOT)/
+	$(Q)-cp $(CFG_DIR)/cfgroot/general-functions.pl		$(CONFIG_ROOT)/
+	$(Q)-cp $(CFG_DIR)/cfgroot/network-functions.pl		$(CONFIG_ROOT)/
+	$(Q)-cp $(CFG_DIR)/cfgroot/geoip-functions.pl		$(CONFIG_ROOT)/
+	$(Q)-cp $(CFG_DIR)/cfgroot/lang.pl			$(CONFIG_ROOT)/
+	$(Q)-cp $(CFG_DIR)/cfgroot/countries.pl			$(CONFIG_ROOT)/
+	$(Q)-cp $(CFG_DIR)/cfgroot/graphs.pl			$(CONFIG_ROOT)/
+	$(Q)-cp $(CFG_DIR)/cfgroot/modem-lib.pl			$(CONFIG_ROOT)/
+	$(Q)-cp $(CFG_DIR)/cfgroot/advoptions-list		$(CONFIG_ROOT)/dhcp/advoptions-list
+	$(Q)-cp $(CFG_DIR)/cfgroot/connscheduler-lib.pl		$(CONFIG_ROOT)/connscheduler/lib.pl
+	$(Q)-cp $(CFG_DIR)/cfgroot/connscheduler.conf		$(CONFIG_ROOT)/connscheduler
+	$(Q)-cp $(CFG_DIR)/extrahd/*				$(CONFIG_ROOT)/extrahd/bin/
+	$(Q)-cp $(CFG_DIR)/cfgroot/sensors-settings		$(CONFIG_ROOT)/sensors/settings
+	$(Q)-cp $(CFG_DIR)/menu/*				$(CONFIG_ROOT)/menu.d/
+	$(Q)-cp $(CFG_DIR)/cfgroot/modem-defaults		$(CONFIG_ROOT)/modem/defaults
+	$(Q)-cp $(CFG_DIR)/cfgroot/modem-settings		$(CONFIG_ROOT)/modem/settings
+	$(Q)-cp $(CFG_DIR)/cfgroot/net-traffic-lib.pl		$(CONFIG_ROOT)/net-traffic/net-traffic-lib.pl
+	$(Q)-cp $(CFG_DIR)/cfgroot/net-traffic-admin.pl		$(CONFIG_ROOT)/net-traffic/net-traffic-admin.pl
+	$(Q)-cp $(CFG_DIR)/cfgroot/nfs-server			$(CONFIG_ROOT)/nfs/nfs-server
+	$(Q)-cp $(CFG_DIR)/cfgroot/proxy-acl			$(CONFIG_ROOT)/proxy/acl-1.4
+	$(Q)-cp $(CFG_DIR)/qos/*				$(CONFIG_ROOT)/qos/bin/
+	$(Q)-cp $(CFG_DIR)/cfgroot/ssh-settings			$(CONFIG_ROOT)/remote/settings
+	$(Q)-cp $(CFG_DIR)/cfgroot/time-settings		$(CONFIG_ROOT)/time/settings
+	$(Q)-cp $(CFG_DIR)/cfgroot/logging-settings		$(CONFIG_ROOT)/logging/settings
+	$(Q)-cp $(CFG_DIR)/cfgroot/useragents			$(CONFIG_ROOT)/proxy/advanced
+	$(Q)-cp $(CFG_DIR)/cfgroot/ethernet-vlans		$(CONFIG_ROOT)/ethernet/vlans
+	$(Q)-cp $(LANGS_DIR)/list				$(CONFIG_ROOT)/langs/
+	$(Q)-cp $(CFG_DIR)/firewall/convert-xtaccess		$(ROOTFS_DIR)/usr/sbin/convert-xtaccess
+	$(Q)-cp $(CFG_DIR)/firewall/convert-outgoingfw		$(ROOTFS_DIR)/usr/sbin/convert-outgoingfw
+	$(Q)-cp $(CFG_DIR)/firewall/convert-dmz			$(ROOTFS_DIR)/usr/sbin/convert-dmz
+	$(Q)-cp $(CFG_DIR)/firewall/convert-portfw		$(ROOTFS_DIR)/usr/sbin/convert-portfw
+	$(Q)-cp $(CFG_DIR)/firewall/p2protocols			$(CONFIG_ROOT)/firewall/p2protocols
+	$(Q)-cp $(CFG_DIR)/firewall/firewall-policy		$(ROOTFS_DIR)/usr/sbin/firewall-policy
+	$(Q)-cp $(CFG_DIR)/fwhosts/icmp-types			$(CONFIG_ROOT)/fwhosts/icmp-types
+	$(Q)-cp $(CFG_DIR)/fwhosts/customservices		$(CONFIG_ROOT)/fwhosts/customservices
+	$(Q)-cp $(CFG_DIR)/fwhosts/customservices            	$(CONFIG_ROOT)/fwhosts/customservices.default
+	
+	$(Q)-cp $(CFG_DIR)/link-aggregation/link-aggregation		$(CONFIG_ROOT)/link-aggregation/
+	$(Q)-cp $(CFG_DIR)/high-availability/high-availability     	$(CONFIG_ROOT)/high-availability/
+	
+	# Oneliner configfiles
+	$(Q)echo  "ENABLED=off"			> $(CONFIG_ROOT)/vpn/settings
+	$(Q)echo  "VPN_DELAYED_START=0"		>>$(CONFIG_ROOT)/vpn/settings
+	$(Q)echo  "01"				> $(CONFIG_ROOT)/certs/serial
+	$(Q)echo  "nameserver    1.2.3.4"	> $(CONFIG_ROOT)/ppp/fake-resolv.conf
+	$(Q)echo  "DROPNEWNOTSYN=on"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "DROPINPUT=on"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "DROPFORWARD=on"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "FWPOLICY=DROP"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "FWPOLICY1=DROP"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "FWPOLICY2=DROP"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "DROPPORTSCAN=on"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "DROPOUTGOING=on"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "DROPSAMBA=off"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "DROPPROXY=off"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "SHOWREMARK=on"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "SHOWCOLORS=on"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "SHOWTABLES=off"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "SHOWDROPDOWN=off"		>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "DROPWIRELESSINPUT=on"	>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "DROPWIRELESSFORWARD=on"	>> $(CONFIG_ROOT)/optionsfw/settings
+	$(Q)echo  "POLICY=MODE2"		>> $(CONFIG_ROOT)/firewall/settings
+	$(Q)echo  "POLICY1=MODE2"		>> $(CONFIG_ROOT)/firewall/settings
+ 
+	# set converters executable
+	$(Q)chmod 755 $(ROOTFS_DIR)/usr/sbin/convert-*
+
+
+	# Modify variables in general-functions.pl
+	$(Q)sed -i -e "s+VERSION+$(VERSION)+g" \
+	    $(CONFIG_ROOT)/general-functions.pl
+
+
+	# Language files
+	$(Q)cp $(LANGS_DIR)/*/cgi-bin/*.pl $(CONFIG_ROOT)/langs/
+
+	# Configroot permissions
+	$(Q)-chown -R nobody:nobody $(CONFIG_ROOT)
+	$(Q)-chown      root:root   $(CONFIG_ROOT)
+	$(Q)-for i in backup/ header.pl general-functions.pl graphs.pl lang.pl addon-lang/ langs/ red/ ; do \
+            chown -R root:root $(CONFIG_ROOT)/$$i; \
+	done
+	$(Q)-chown -Rv root:root $(CONFIG_ROOT)/*/bin
+	$(Q)-chown root:nobody $(CONFIG_ROOT)/dhcpc
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

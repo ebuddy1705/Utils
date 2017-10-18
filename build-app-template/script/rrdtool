@@ -1,0 +1,86 @@
+
+
+VER        = 1.5.3
+APP_DIR    = rrdtool-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 868a828cc6b10654c440a85054240ae2
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+#depend on: cairo, pango, libxml2, zlib
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CPPFLAGS="-I$(ROOTFS_DIR)/usr/include -I$(ROOTFS_DIR)/usr/include/glib-2.0 -I$(ROOTFS_DIR)/usr/lib/glib-2.0/include  -pthread -I$(ROOTFS_DIR)/usr/include/pango-1.0 -I$(ROOTFS_DIR)/usr/include/cairo -I$(ROOTFS_DIR)/usr/include/glib-2.0 -I$(ROOTFS_DIR)/usr/lib/glib-2.0/include -I$(ROOTFS_DIR)/usr/include/pixman-1 -I$(ROOTFS_DIR)/usr/include/freetype2 -I$(ROOTFS_DIR)/usr/include/libdrm -I$(ROOTFS_DIR)/usr/include/libpng12  -I$(ROOTFS_DIR)/usr/include/libxml2" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib" \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	ac_cv_lib_pangocairo_1_0_pango_cairo_context_set_font_options=yes \
+	ac_cv_header_pango_pango_h=yes \
+	ac_cv_func_pango_font_map_create_context=yes \
+	ac_cv_lib_xml2_xmlParseFile=yes \
+	./configure --prefix=/usr \
+	--host=$(CROSS) \
+	LD=$(CROSS)-ld \
+	CC=$(CROSS)-gcc \
+	--disable-rrdcgi \
+	--enable-perl \
+	--enable-perl-site-install \
+	--disable-tcl \
+	--disable-ruby \
+	--disable-python
+	
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's/lib64/lib/g' Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's/po src doc bindings/po src doc/g' Makefile
+	
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make  DESTDIR=$(ROOTFS_DIR) \
+					      CC=$(CROSS)-gcc LD=$(CROSS)-ld \
+					      LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -lz -lm  -lglib-2.0 -lpangocairo-1.0 -lpango-1.0 -lgobject-2.0 -lglib-2.0 -lcairo  -lxml2" \
+					      LDDLFLAGS="-shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions --param=ssp-buffer-size=4 -grecord-gcc-switches -Wl,-z,relro" \
+					      install
+	
+	$(Q)-mkdir -p $(ROOTFS_DIR)/srv/web/ipfire/html/graphs/
+	$(Q)chmod 777 $(ROOTFS_DIR)/srv/web/ipfire/html/graphs/
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/log/rrd/
+	
+	
+	#==== BUILD PERL MODULE =====================
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl-shared && PERL5LIB=$(ROOTFS_DIR)/usr/share/perl5:$(ROOTFS_DIR)/usr/lib/perl5 perl Makefile.PL \
+						    PREFIX=$(ROOTFS_DIR)/usr \
+						    CC=$(CROSS)-gcc \
+						    AR=$(CROSS)-ar \
+						    LD=$(CROSS)-gcc  \
+						    FULL_AR=$(CROSS)-ar \
+						    LDDLFLAGS="-L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE/ -shared -fPIC -O2 -g -pipe -Wall -L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usrlib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usrlib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    OSNAME="$(PERL_TARGET)" \
+						    OSVERS="3.14" \
+						    SITELIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    SITEARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    VENDORARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    VENDORLIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_LIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_ARCHLIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    CCFLAGS="-D_REENTRANT -D_GNU_SOURCE -fno-strict-aliasing -pipe -fstack-protector -I$(ROOTFS_DIR)/usr/include -I$(SRC_DIR)/$(APP_DIR)/src" \
+						    OPTIMIZE="-O2 -g -pipe -Wall" \
+						    INC=""
+						    
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl-shared && sed -i 's/lib64/lib/g' Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl-shared && sed -i "s|../../../src/librrd.la|../../src/librrd.la|" Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl-shared && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl-shared && make install
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

@@ -1,0 +1,24 @@
+diff -Naur dhcp-4.3.1/bind/bind-9.9.5-P1/lib/export/dns/Makefile.in dhcp-4.3.1/bind/bind-9.9.5-P1/lib/export/dns/Makefile.in
+--- dhcp-4.3.1/bind/bind-9.9.5-P1/lib/export/dns/Makefile.in	2014-05-23 20:42:39.000000000 +0700
++++ dhcp-4.3.1/bind/bind-9.9.5-P1/lib/export/dns/Makefile.in	2015-11-26 10:00:53.179660065 +0700
+@@ -168,7 +168,7 @@
+ 	./gen -s ${srcdir} > code.h
+ 
+ gen: ${srcdir}/gen.c
+-	${CC} ${ALL_CFLAGS} ${LDFLAGS} -o $@ ${srcdir}/gen.c ${LIBS}
++	${BUILD_CC} ${ALL_CFLAGS} ${LDFLAGS} -o $@ ${srcdir}/gen.c ${LIBS}
+ 
+ #We don't need rbtdb64 for this library
+ #rbtdb64.@O@: rbtdb.c
+diff -Naur dhcp-4.3.1/bind/Makefile dhcp-4.3.1/bind/Makefile
+--- dhcp-4.3.1/bind/Makefile	2014-08-07 05:48:50.000000000 +0700
++++ dhcp-4.3.1/bind/Makefile	2015-11-26 09:54:44.523620459 +0700
+@@ -52,7 +52,7 @@
+ 	else                                                       \
+ 		echo Configuring BIND Export libraries for DHCP. ; \
+ 		rm -rf ./lib ./include ./configure.log ./build.log ./install.log ; \
+-		(cd ${bindsrcdir} && ./configure --disable-kqueue --disable-epoll --disable-devpoll --without-openssl --without-libxml2 --enable-exportlib --enable-threads=no --with-export-includedir=${binddir}/include --with-export-libdir=${binddir}/lib --with-gssapi=no > ${binddir}/configure.log); \
++		(cd ${bindsrcdir} && ./configure --host=arm-xilinx-linux-gnueabi --target=arm-xilinx-linux-gnueabi --build=x86_64-linux-gnu --with-randomdev=/dev/random --disable-kqueue --disable-epoll --disable-devpoll --without-openssl --without-libxml2 --enable-exportlib --enable-threads=no --with-export-includedir=${binddir}/include --with-export-libdir=${binddir}/lib --with-gssapi=no > ${binddir}/configure.log); \
+ 	fi
+ 
+ # Build and install the export libraries

@@ -1,0 +1,24 @@
+
+
+VER        = 2.33
+APP_DIR    = dejavu-fonts-ttf-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+md5_$(DL_FILE) = 8b601e91725b6d69141b0fcf527948c0
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	
+	$(Q)-mkdir -pv /usr/share/fonts
+	$(Q)install -m 644 $(SRC_DIR)/$(APP_DIR)/ttf/* $(ROOTFS_DIR)/usr/share/fonts
+		
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

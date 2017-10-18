@@ -1,0 +1,30 @@
+
+PROG       = freefont
+PAK_VER    = 1
+
+DEPS       = ""
+
+
+
+VER        = 20060126
+APP_DIR    = freefont-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = freefont-ttf-$(VER).tar.bz2
+md5_$(DL_FILE) = 9c0097719359c52a1c0a7ee6ae3ad46b
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-mkdir -p $(ROOTFS_DIR)/usr/share/fonts/default/TrueType/
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -m 644 *.ttf $(ROOTFS_DIR)/usr/share/fonts/default/TrueType/
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+

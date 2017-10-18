@@ -1,0 +1,26 @@
+VER        = 4.27.1
+APP_DIR    = liblzma-$(VER)
+DL_FILE    = $(APP_DIR).tar.gz
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)rm -rf $(SRC_DIR)/$(APP_DIR) && tar -xzf $(EXTPKGS_DIR)/$(DL_FILE) -C $(SRC_DIR)
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/$(APP_DIR).patch
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

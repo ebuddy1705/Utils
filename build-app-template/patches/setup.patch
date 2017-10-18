@@ -1,0 +1,35 @@
+diff -Naur setup/Makefile setup/Makefile
+--- setup/Makefile	2015-11-11 15:03:00.456269546 +0700
++++ setup/Makefile	2015-11-11 15:43:16.968992885 +0700
+@@ -26,23 +26,27 @@
+ LDFLAGS = 
+ LIBS    = -lnewt -lslang -lsmooth
+ 
++PROGS = setup
+ COMPILE = $(CC) -c $(INCLUDE) $(CFLAGS)
+ 
+-LINK = $(LD) $(LDFLAGS)
++LINK = $(CC) $(LDFLAGS)
+ 
+ all : programs
+ 
+-programs : setup
++programs : $(PROGS)
+ 
+ clean :
+-	-rm -f *.o setup core
++	-rm -f *.o $(PROGS) core
+ 
++install: all
++	mkdir -p $(PREFIX)/bin
++	install -m 755  $(PROGS) $(PREFIX)/sbin
+ ######
+ 
+ OBJS=main.o hostname.o domainname.o passwords.o networking.o misc.o \
+ 	dhcp.o keymap.o timezone.o netstuff.o
+ 
+-setup: $(OBJS)
++$(PROGS): $(OBJS)
+ 	$(LINK) $(OBJS) -o $@ $(LIBS)
+ 
+ %.o : %.c

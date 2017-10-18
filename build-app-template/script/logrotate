@@ -1,0 +1,29 @@
+
+
+
+VER        = 3.8.1
+APP_DIR    = logrotate-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = logrotate_$(VER).orig.tar.gz
+md5_$(DL_FILE) = bd2e20d8dc644291b08f9215397d28a5
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make EXTRA_CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " EXTRA_LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " CC=$(CROSS)-gcc
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make PREFIX=$(ROOTFS_DIR) CC=$(CROSS)-gcc install
+	
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/etc/logrotate.d
+	$(Q)-touch $(ROOTFS_DIR)/etc/logrotate.d/.empty $(ROOTFS_DIR)/var/lib/logrotate.status
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

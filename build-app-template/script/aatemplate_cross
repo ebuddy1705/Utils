@@ -1,0 +1,93 @@
+
+
+
+
+VER        = 1.1.6
+APP_DIR    = libnet-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 710296fe424a49344e5fcc0d09e53317
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#EXTRACT
+	$(Q)-rm -rf $(SRC_DIR)/$(APP_DIR) && tar -xzf $(EXTPKGS_DIR)/$(DL_FILE) -C $(SRC_DIR)
+	
+	#PATCH
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/openssl-1.0.0-beta5-enginesdir.patch
+	
+	#CONFIGURE
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib" \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc
+	
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+
+#=====================================================================================================================
+#======================================== PERL MODULE ================================================================
+#=====================================================================================================================
+
+VER        = 1.03
+APP_DIR    = Sort-Naturally-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = fef2e36d1b1ea23ee79ec68b5872453f
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i "s%,'y'%,'n'%" Makefile.PL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && yes 'n' | PERL5LIB=$(ROOTFS_DIR)/usr/share/perl5:$(ROOTFS_DIR)/usr/lib/perl5 perl Makefile.PL \
+						    PREFIX=$(ROOTFS_DIR)/usr \
+						    CC=$(CROSS)-gcc \
+						    AR=$(CROSS)-ar \
+						    LD=$(CROSS)-gcc  \
+						    FULL_AR=$(CROSS)-ar \
+						    LDDLFLAGS="-L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE/ -shared -fPIC -O2 -g -pipe -Wall -L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usrlib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usrlib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    OSNAME="$(PERL_TARGET)" \
+						    OSVERS="3.14" \
+						    SITELIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    SITEARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    VENDORARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    VENDORLIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_LIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_ARCHLIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    CCFLAGS="-D_REENTRANT -D_GNU_SOURCE -fno-strict-aliasing -pipe -fstack-protector -I$(ROOTFS_DIR)/usr/include" \
+						    OPTIMIZE="-O2 -g -pipe -Wall" \
+						    INC=""
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's/lib64/lib/g' Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make install
+
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

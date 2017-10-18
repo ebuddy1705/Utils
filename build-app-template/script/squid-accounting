@@ -1,0 +1,57 @@
+
+
+PROG       = squid-accounting
+PAK_VER    = 6
+
+DEPS       = "perl-DBI perl-DBD-SQLite perl-File-ReadBackwards perl-PDF-API2 sendEmail"
+
+
+VER        = 1.0.3
+APP_DIR    = squid-accounting
+DL_FILE    = $(APP_DIR)
+
+obj:=  _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#EXTRACT
+	$(Q)-rm -rf $(SRC_DIR)/$(APP_DIR) && cp -rf $(CENTIC_SRC)/$(DL_FILE) $(SRC_DIR)
+	
+
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/ipfire/accounting/bill
+	$(Q)-mkdir -p $(ROOTFS_DIR)/srv/web/ipfire/html/accounting/logo
+
+	#Touch Logfile
+	$(Q)touch $(ROOTFS_DIR)/var/log/accounting.log
+	$(Q)-chmod 777 $(ROOTFS_DIR)/var/log/accounting.log
+	
+	#Set permissions for logo and graphs
+	$(Q)-chmod -R 777 $(ROOTFS_DIR)/srv/web/ipfire/html/accounting
+		
+	
+	$(Q)install -v -m 755 $(SRC_DIR)/$(APP_DIR)/accounting.cgi 			$(ROOTFS_DIR)/srv/web/ipfire/cgi-bin/
+	$(Q)install -v -m 755 $(SRC_DIR)/$(APP_DIR)/acct.pl 				$(ROOTFS_DIR)/usr/local/bin/
+	$(Q)install -v -m 644 $(SRC_DIR)/$(APP_DIR)/acct-lib.pl 			$(ROOTFS_DIR)/var/ipfire/accounting/
+	$(Q)install -v -m 655 $(SRC_DIR)/$(APP_DIR)/acct.de.pl 				$(ROOTFS_DIR)/var/ipfire/addon-lang/
+	$(Q)install -v -m 655 $(SRC_DIR)/$(APP_DIR)/acct.en.pl 				$(ROOTFS_DIR)/var/ipfire/addon-lang/
+	$(Q)install -v -m 655 $(SRC_DIR)/$(APP_DIR)/EX-squid-accounting.menu 		$(ROOTFS_DIR)/var/ipfire/menu.d/
+	$(Q)install -v -m 755 $(SRC_DIR)/$(APP_DIR)/dbinstall.pl 			$(ROOTFS_DIR)/var/ipfire/accounting/
+	
+	mkdir -p $(ROOTFS_DIR)/var/ipfire/backup/addons/includes
+	$(Q)install -v -m 644 $(SRC_DIR)/$(APP_DIR)/config/backup/includes/squid-accounting  $(ROOTFS_DIR)/var/ipfire/backup/addons/includes/squid-accounting
+			
+	#activate hourly logging of proxy logfile
+	$(Q)ln -sf /usr/local/bin/acct.pl $(ROOTFS_DIR)/etc/fcron.hourly/squid-accounting
+		
+	$(Q)-chown -R nobody.nobody $(ROOTFS_DIR)/var/ipfire/accounting
+	
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+	
+

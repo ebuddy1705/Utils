@@ -1,0 +1,40 @@
+
+VER        = 2.24
+APP_DIR    = util-linux-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.xz
+md5_$(DL_FILE) = 4fac6443427f575fc5f3531a4ad2ca01
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc \
+	--disable-makeinstall-chown \
+	--without-systemdsystemunitdir \
+	PKG_CONFIG="" \
+	--without-ncurses 
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make HAVE_KILL=yes HAVE_SLN=yes
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make HAVE_KILL=yes HAVE_SLN=yes DESTDIR=$(SRC_DIR)/$(APP_DIR)/install install
+	
+	$(Q)cp -n -rf $(SRC_DIR)/$(APP_DIR)/install/* $(ROOTFS_DIR)
+	
+	# Install fstrim cronjob
+	$(Q)-mkdir -p $(ROOTFS_DIR)/etc/fcron.daily
+	$(Q)-install -m 0755 $(CFG_DIR)/fstrim/trim $(ROOTFS_DIR)/etc/fcron.daily/trim
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+	

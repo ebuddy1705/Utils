@@ -1,0 +1,36 @@
+
+VER        = 2.05
+APP_DIR    = arping-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 96e7c2ce8ae09046e264a314eeaac4dd
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR) && patch -Np1 < $(PATCHES_DIR)/arping-2.05.patch
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make CC=$(CROSS)-gcc ROOTFS_DIR=$(ROOTFS_DIR)
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -m 0755 arping $(ROOTFS_DIR)/usr/sbin
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+###############################################################################
+# Installation Details
+###############################################################################
+
+$(TARGET) : $(patsubst %,$(DIR_DL)/%,$(objects))
+	@$(PREBUILD)
+	@rm -rf $(DIR_APP) && cd $(DIR_SRC) && tar zxf $(DIR_DL)/$(DL_FILE)
+	cd $(DIR_APP) && make $(MAKETUNING)
+	cd $(DIR_APP) && install -m 0755 arping /usr/sbin
+	@rm -rf $(DIR_APP)
+	@$(POSTBUILD)

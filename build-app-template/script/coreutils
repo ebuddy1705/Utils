@@ -1,0 +1,41 @@
+
+VER        = 8.23
+APP_DIR    = coreutils-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.xz
+md5_$(DL_FILE) = abed135279f87ad6762ce57ff6d89c41
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i "s:@man1_MANS@::" Makefile.in
+
+	#CONFIGURE
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-fno-strict-aliasing " \
+	gl_cv_func_mknod_works=yes \
+	./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc \
+	--disable-selinux \
+	--enable-largefile \
+	--disable-rpath \
+	--enable-install-program=arch \
+	--enable-no-install-program=hostname,kill \
+	--with-tty-group
+
+	
+	#COMPILE and INSTALL (mv before cp: important)
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)mv $(ROOTFS_DIR)/bin/df $(ROOTFS_DIR)/bin/df_
+	$(Q)cp -rf $(SRC_DIR)/$(APP_DIR)/src/df $(ROOTFS_DIR)/bin/
+	echo "$(SRC_DIR)/$(APP_DIR)/src/df $(ROOTFS_DIR)/bin/"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

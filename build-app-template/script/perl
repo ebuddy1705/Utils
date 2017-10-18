@@ -1,0 +1,36 @@
+
+VER        = $(PERL_VER)
+CROSS_VER  = 0.9.7
+APP_DIR    = perl-$(VER)
+DL_FILE    = $(APP_DIR).tar.gz
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-rm -rf $(SRC_DIR)/$(APP_DIR)
+	$(Q)tar -xzf $(EXTPKGS_DIR)/$(DL_FILE) -C $(SRC_DIR)
+	$(Q)tar -xzf $(EXTPKGS_DIR)/$(APP_DIR)-cross-$(CROSS_VER).tar.gz -C $(SRC_DIR)
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --target=$(PERL_TARGET) \
+	--target-tools-prefix=$(CROSS)- \
+	-Dcccdlflags=-fPIC -Doptimize=-O2 -Duseshrplib \
+	-Dotherlibdirs=/usr/lib/perl5/site_perl/$(VER) \
+	--prefix=/usr
+	
+	$(Q)$(MAKE) -C $(SRC_DIR)/$(APP_DIR)
+	$(Q)$(MAKE) -C $(SRC_DIR)/$(APP_DIR) DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)cp -rf $(ROOTFS_DIR)/usr/lib/perl5/$(VER)/$(PERL_TARGET)/CORE/libperl.so $(ROOTFS_DIR)/usr/lib
+	$(Q)tar -xzf $(EXTPKGS_DIR)/perl5-CORE.tar.gz -C $(ROOTFS_DIR)/usr/lib/perl5/$(VER)/$(PERL_TARGET)/CORE
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+	

@@ -1,0 +1,22 @@
+
+VER        = centic
+APP_DIR    = fix_path_rootfs
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo "=================================================="
+	$(Q)echo "=================================================="
+	$(Q)echo "================ FIX YOUR PATH IN ROOTFS    ======"
+	$(Q)echo "======================$(ROOTFS_DIR)========================"
+
+	$(Q)../tools/find_and_replace.sh "rootfs" "$(ROOTFS_DIR)" "$(ROOTFS_DIR)"
+	#$(Q)touch $@
+	
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

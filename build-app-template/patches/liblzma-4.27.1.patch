@@ -1,0 +1,113 @@
+diff -Naur liblzma-4.27.1/src/BinTree.h liblzma-4.27.1/src/BinTree.h
+--- liblzma-4.27.1/src/BinTree.h	2005-11-04 05:54:23.000000000 +0700
++++ liblzma-4.27.1/src/BinTree.h	2015-11-12 11:25:11.155108000 +0700
+@@ -32,8 +32,8 @@
+ 			      UInt32 matchMaxLen, UInt32 keepAddBufferAfter);
+ 	    virtual UInt32 GetLongestMatch(UInt32 *distances);
+ 	    virtual void DummyLongestMatch();
+-            UInt32 CMatchFinderBinTree::ReadOnlyGetLongestMatch(UInt32 *distances);
+-            virtual void Adjust(int x);
++        UInt32 ReadOnlyGetLongestMatch(UInt32 *distances);
++        virtual void Adjust(int x);
+ 
+ 	public:
+ 	    CMatchFinderBinTree();
+diff -Naur liblzma-4.27.1/src/LZMAEncoder.cpp liblzma-4.27.1/src/LZMAEncoder.cpp
+--- liblzma-4.27.1/src/LZMAEncoder.cpp	2005-11-04 08:47:40.000000000 +0700
++++ liblzma-4.27.1/src/LZMAEncoder.cpp	2015-11-12 11:29:01.943623000 +0700
+@@ -26,16 +26,49 @@
+ #define COMPRESS_MF_BT4B
+ #endif
+ #ifdef COMPRESS_MF_BT2
+-#include "BinTree2.h"
++#undef BT_NAMESPACE
++#define BT_NAMESPACE NBT2
++#include "BinTree.h"
++#include "BinTreeMain.h"
+ #endif
+ #ifdef COMPRESS_MF_BT3
+-#include "BinTree3.h"
++#undef BT_NAMESPACE
++#define BT_NAMESPACE NBT3
++
++#define HASH_ARRAY_2
++
++#include "BinTree.h"
++#include "BinTreeMain.h"
++
++#undef HASH_ARRAY_2
+ #endif
+ #ifdef COMPRESS_MF_BT4
+-#include "BinTree4.h"
++#undef BT_NAMESPACE
++#define BT_NAMESPACE NBT4
++
++#define HASH_ARRAY_2
++#define HASH_ARRAY_3
++
++#include "BinTree.h"
++#include "BinTreeMain.h"
++
++#undef HASH_ARRAY_2
++#undef HASH_ARRAY_3
+ #endif
+ #ifdef COMPRESS_MF_BT4B
+-#include "BinTree4b.h"
++#undef BT_NAMESPACE
++#define BT_NAMESPACE NBT4B
++
++#define HASH_ARRAY_2
++#define HASH_ARRAY_3
++#define HASH_BIG
++
++#include "BinTree.h"
++#include "BinTreeMain.h"
++
++#undef HASH_ARRAY_2
++#undef HASH_ARRAY_3
++#undef HASH_BIG
+ #endif
+ #endif
+ 
+@@ -1032,8 +1065,7 @@
+ 	    curgofbackMain = _matchDistances[curgoflenMain];
+ 	    if (repLens[repMaxIndex] >= 2)
+ 	    {
+-		if (repLens[repMaxIndex] + 1 >= curgoflenMain || 
+-		    repLens[repMaxIndex] + 2 >= curgoflenMain && (curgofbackMain > (1<<12)))
++		if ((repLens[repMaxIndex] + 1 >= curgoflenMain) || ((repLens[repMaxIndex] + 2 >= curgoflenMain) && (curgofbackMain > (1<<12))))
+ 		{
+ 		    curpos = repMaxIndex;
+ 		    curlen = repLens[repMaxIndex];
+@@ -1062,11 +1094,11 @@
+ 	    if (_longestMatchLength >= 2 &&
+ 		(
+ 		    (_longestMatchLength >= curgoflenMain && _matchDistances[curgoflenMain] < curgofbackMain) || 
+-		    _longestMatchLength == curgoflenMain + 1 && 
+-		    !ChangePair(curgofbackMain, _matchDistances[_longestMatchLength]) ||
++		    (_longestMatchLength == curgoflenMain + 1 && 
++		    !ChangePair(curgofbackMain, _matchDistances[_longestMatchLength])) ||
+ 		    _longestMatchLength > curgoflenMain + 1 ||
+-		    _longestMatchLength + 1 >= curgoflenMain && curgoflenMain >= 3 &&
+-		    ChangePair(_matchDistances[curgoflenMain - 1], curgofbackMain)
++		    (_longestMatchLength + 1 >= curgoflenMain && curgoflenMain >= 3 &&
++		    ChangePair(_matchDistances[curgoflenMain - 1], curgofbackMain))
+ 		    )
+ 		)
+ 	    {
+diff -Naur liblzma-4.27.1/src/wrapper-dec.c liblzma-4.27.1/src/wrapper-dec.c
+--- liblzma-4.27.1/src/wrapper-dec.c	2005-11-04 08:37:50.000000000 +0700
++++ liblzma-4.27.1/src/wrapper-dec.c	2015-11-12 10:20:38.478886000 +0700
+@@ -83,9 +83,9 @@
+         size_t inproc,outproc;
+         int finish=(s->avail_in==0 && action!=LZMA_RUN);
+ 
+-        int res=LzmaDecode(&d->decoder,
+-                           s->next_in,s->avail_in,&inproc,
+-                           s->next_out,s->avail_out,&outproc,
++        int res=LzmaDecode((CLzmaDecoderState *)&d->decoder,
++                           (const unsigned char *)(s->next_in),s->avail_in,&inproc,
++                           (unsigned char *)(s->next_out),s->avail_out,&outproc,
+                            finish);
+         switch( res ) {
+             case LZMA_RESULT_OK:

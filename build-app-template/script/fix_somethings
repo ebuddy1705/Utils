@@ -1,0 +1,32 @@
+
+VER        = centic
+APP_DIR    = fix_somethings
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo "=================================================="
+	$(Q)echo "=================================================="
+	$(Q)echo "================ FIX SOME THINGS    ================"
+	$(Q)echo "=================================================="
+	
+	#add more perl @INC
+	echo " " >> $(ROOTFS_DIR)/etc/profile
+	echo "export LC_ALL=C" >> $(ROOTFS_DIR)/etc/profile
+	echo "export PERL5LIB=/usr/lib/perl5:/usr/share/perl5" >> $(ROOTFS_DIR)/etc/profile
+
+	#==== change bash to sh shell ==============
+	#$(Q)../tools/find_and_replace.sh "bash" "$(ROOTFS_DIR)" "#!/bin/bash" "#!/bin/sh"
+	
+	#==== chmod ==============
+	$(Q)chmod 777 -R $(CONFIG_ROOT)
+
+	$(Q)touch $@
+	
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

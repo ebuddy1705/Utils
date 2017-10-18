@@ -1,0 +1,41 @@
+
+PROG       = dbus
+PAK_VER    = 1
+DEPS       = ""
+
+
+VER        = 1.0.3
+APP_DIR    = dbus-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = ce328423db5743fe9006d39113b5324d
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/dbus-1.0.3-compile-fix-1.patch
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ac_cv_have_abstract_sockets=yes \
+	CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc \
+	--sysconfdir=/etc \
+	--localstatedir=/var \
+	--with-x=no
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

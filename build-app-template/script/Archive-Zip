@@ -1,0 +1,45 @@
+
+
+
+VER        = 1.16
+APP_DIR    = Archive-Zip-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = e28dff400d07b1659d659d8dde7071f1
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && PERL5LIB=$(ROOTFS_DIR)/usr/share/perl5:$(ROOTFS_DIR)/usr/lib/perl5 perl Makefile.PL \
+						    PREFIX=$(ROOTFS_DIR)/usr \
+						    CC=$(CROSS)-gcc \
+						    AR=$(CROSS)-ar \
+						    LD=$(CROSS)-gcc  \
+						    FULL_AR=$(CROSS)-ar \
+						    LDDLFLAGS="-L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE/ -shared -fPIC -O2 -g -pipe -Wall -L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usrlib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usrlib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    OSNAME="$(PERL_TARGET)" \
+						    OSVERS="3.14" \
+						    SITELIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    SITEARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    VENDORARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    VENDORLIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_LIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_ARCHLIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    CCFLAGS="-D_REENTRANT -D_GNU_SOURCE -fno-strict-aliasing -pipe -fstack-protector -I$(ROOTFS_DIR)/usr/include" \
+						    OPTIMIZE="-O2 -g -pipe -Wall" \
+						    INC=""
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's/lib64/lib/g' Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make install
+
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

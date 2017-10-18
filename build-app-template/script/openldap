@@ -1,0 +1,56 @@
+
+PROG       = openldap
+PAK_VER    = 3
+
+VER        = 2.3.20
+APP_DIR    = openldap-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tgz
+md5_$(DL_FILE) = 49d2c5b9378a7b57e1fb03948acb8e32
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np0 < $(PATCHES_DIR)/openldap-gcc44-fixes.patch
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && \
+	CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include  -D_GNU_SOURCE" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	./configure --prefix=/usr \
+		--host=$(CROSS) CC=$(CROSS)-gcc \
+		--libexecdir=/usr/lib \
+		--sysconfdir=/etc \
+		--localstatedir=/srv/ldap \
+		--with-threads=posix \
+		--disable-perl \
+		--enable-dynamic \
+		--enable-crypt \
+		--enable-modules \
+		--enable-rlookups \
+		--enable-backends=mod \
+		--enable-overlays=mod \
+		--enable-sql=no \
+		--enable-ndb=no \
+		--disable-static \
+		--with-yielding_select=yes
+		
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i "s:#define NEED_MEMCMP_REPLACEMENT://#define NEED_MEMCMP_REPLACEMENT:" include/portable.h
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make 
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) STRIP=" " install 
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

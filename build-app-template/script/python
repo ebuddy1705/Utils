@@ -1,0 +1,69 @@
+
+
+VER        = 2.7.3
+APP_DIR    = Python-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)rm -rf $(SRC_DIR)/$(APP_DIR) && tar -jxf $(EXTPKGS_DIR)/$(DL_FILE) -C $(SRC_DIR)
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make python Parser/pgen
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && mv python hostpython
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && mv Parser/pgen Parser/hostpgen
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make distclean
+	
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -p1 < $(PATCHES_DIR)/Python-$(VER)-xcompile.patch
+
+	#"configure for target, source environment to build with sqlite3 lib-dynload"
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib" \
+	./configure \
+	--host=$(CROSS) --build=x86_64-unknown-linux-gnu \
+	CC=${CROSS}-gcc \
+	CXX=${CROSS}-g++ \
+	AR=${CROSS}-ar \
+	RANLIB=${CROSS}-ranlib \
+	LD=${CROSS}-ld \
+	NM=${CROSS}-nm \
+	--enable-shared \
+	--disable-ipv6 \
+	--prefix=/usr
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make \
+	HOSTPYTHON=./hostpython \
+	HOSTPGEN=./Parser/hostpgen \
+	BLDSHARED="${CROSS}-gcc -shared" \
+	CROSS_COMPILE=${CROSS}- \
+	CROSS_COMPILE_TARGET=yes \
+	HOSTARCH=$(CROSS) \
+	BUILDARCH=x86_64-unknown-linux-gnu
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) &&  make install \
+	HOSTPYTHON=./hostpython \
+	HOSTPGEN=./Parser/hostpgen \
+	BLDSHARED="${CROSS}-gcc -shared" \
+	CROSS_COMPILE=${CROSS}- \
+	CROSS_COMPILE_TARGET=yes \
+	HOSTARCH=$(CROSS) \
+	BUILDARCH=x86_64-unknown-linux-gnu \
+	DESTDIR=$(ROOTFS_DIR)
+
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

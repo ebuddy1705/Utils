@@ -1,0 +1,46 @@
+
+PROG       = cyrus-sasl
+PAK_VER    = 1
+
+
+
+VER        = 2.1.26
+APP_DIR    = cyrus-sasl-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = a7f4e5e559a0e37b3ffc438c9456e425
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR) && patch -Np1 < $(PATCHES_DIR)/cyrus-sasl-2.1.26.patch
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i '/sasl_global/s/^static //' lib/client.c
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's/cat8/man8/' saslauthd/Makefile.am
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && autoconf
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/usr \
+			    --host=$(CROSS) CC=$(CROSS)-gcc \
+			    --sysconfdir=/etc \
+		            --with-dbpath=$(ROOTFS_DIR)/var/lib/sasl/sasldb2 \
+		            --with-saslauthd=$(ROOTFS_DIR)/var/run/saslauthd \
+		            --with-des=no --with-rc4=no \
+		            --enable-shared
+		            
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)install -v -m700 -d $(ROOTFS_DIR)/var/lib/sasl
+	$(Q)-mkdir $(ROOTFS_DIR)/var/run/saslauthd
+	$(Q)cp -vf $(CFG_DIR)/cyrus-sasl/smtpd.conf $(ROOTFS_DIR)/usr/lib/sasl2/
+
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

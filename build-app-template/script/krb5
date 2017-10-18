@@ -1,0 +1,77 @@
+
+PROG       = krb5
+PAK_VER    = 1
+
+DEPS       = ""
+
+
+
+
+
+
+VER        = 1.12.1
+APP_DIR    = krb5-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 4a631b3474d3e44773f1ecda96f04400
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)/src && patch -Np2 < $(PATCHES_DIR)/krb5/mitkrb-1.12.1-db2_fix-1.patch
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/src && sed -e "s@python2.5/Python.h@& python2.7/Python.h@g" \
+		-e "s@-lpython2.5]@&,\n  AC_CHECK_LIB(python2.7,main,[PYTHON_LIB=-lpython2.7])@g" \
+		-i configure.in
+		
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR)/src && autoconf
+	
+	$(Q)cp -rf $(PATCHES_DIR)/krb5/configure $(SRC_DIR)/$(APP_DIR)/src/
+	$(Q)cp -rf $(PATCHES_DIR)/krb5/ss_err.h $(SRC_DIR)/$(APP_DIR)/src/util/ss/
+	#$(Q)cp -rf $(PATCHES_DIR)/krb5/Makefile.in $(SRC_DIR)/$(APP_DIR)/src/util/profile/
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/src && CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include  -I$(SRC_DIR)/$(APP_DIR)/src/util/et -I$(SRC_DIR)/$(APP_DIR)/src/util -I$(SRC_DIR)/$(APP_DIR)/src/util/verto " \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	ac_cv_func_regcomp=yes \
+	./configure \
+		--host=$(CROSS) CC=$(CROSS)-gcc \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var/lib \
+		--with-system-et \
+		--with-system-ss \
+		--enable-dns-for-realm
+
+	$(Q)sed -i "s:\# error \"Don't know how to do unload-time finalization for this configuration\.\"::" $(SRC_DIR)/$(APP_DIR)/src/include/k5-platform.h
+	
+	#COMPILE VERTO
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/src && make -C util/verto
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/src && make DESTDIR=$(ROOTFS_DIR) install -C util/verto
+	
+	#$(Q)sed -i "s:::" $(SRC_DIR)/$(APP_DIR)/src/krb5-1.12.1/src/util/profile/profile.h
+	#$(Q)chmod 777 $(SRC_DIR)/$(APP_DIR)/src/lib/gssapi/generic/gssapi_err_generic.h
+	#$(Q)sed -i "s:extern void initialize_ggss_error_table_r::" $(SRC_DIR)/$(APP_DIR)/src/lib/gssapi/generic/gssapi_err_generic.h
+	
+	
+	#COMPILE ALL KRB5
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/src && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/src && make install
+
+	$(Q)for LIB in gssapi_krb5 gssrpc k5crypto kadm5clnt kadm5srv \
+        		kdb5 kdb_ldap krad krb5 krb5support verto; do \
+		chmod -f -v 755 "$(ROOTFS_DIR)/usr/lib/lib$$LIB.so"; \
+	done
+
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

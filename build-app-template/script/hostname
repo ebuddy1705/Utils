@@ -1,0 +1,27 @@
+
+VER        = 3.15
+APP_DIR    = hostname
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = hostname_$(VER).tar.gz
+md5_$(DL_FILE) = f93c87de2517850de5f47234e3bcb563
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/hostname-rh.patch
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make CC=$(CROSS)-gcc
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make BASEDIR=$(ROOTFS_DIR) install
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+

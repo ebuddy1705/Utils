@@ -1,0 +1,24 @@
+
+
+
+
+VER        = 
+APP_DIR    = experimental.pm
+DL_FILE    = $(APP_DIR).tar.gz
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#EXTRACT
+	$(Q)-rm -rf $(SRC_DIR)/$(APP_DIR) && tar -xzf $(EXTPKGS_DIR)/$(DL_FILE) -C $(ROOTFS_DIR)/usr/lib/perl5
+
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

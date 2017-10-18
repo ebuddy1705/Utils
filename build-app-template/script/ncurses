@@ -1,0 +1,125 @@
+
+
+
+EXTRA_CONFIG += \
+	--prefix=$(ROOTFS_DIR)/usr \
+	--with-shared \
+	--without-debug \
+	--without-ada \
+	--with-ospeed=unsigned \
+	--with-chtype=long \
+	--enable-hard-tabs \
+	--enable-xmc-glitch \
+	--enable-colorfgbg \
+	--enable-overwrite \
+	--with-termlib=tinfo \
+	--disable-nls \
+	--without-manpages \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+PREFIX=$(ROOTFS_DIR)/usr
+	
+	
+VER        = 5.9
+APP_DIR    = ncurses-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 8cb9c412e5f2d96bc6f459aa8c6282a1
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure $(EXTRA_CONFIG) \
+	#--host=$(CROSS) CC=$(CROSS)-gcc
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make install
+	
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && mkdir -pv narrowc widec
+
+	# Build narrowc version.
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/narrowc && ln -svf ../configure .
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/narrowc && ./configure $(EXTRA_CONFIG) --with-ticlib --host=$(CROSS) CC=$(CROSS)-gcc
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/narrowc && make libs
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/narrowc && make -C progs
+
+	# Build widec version.
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/widec && ln -svf ../configure .
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/widec && ./configure $(EXTRA_CONFIG) \
+		--enable-widec --without-progs --host=$(CROSS) CC=$(CROSS)-gcc	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/widec && make libs
+
+	# Install everything.
+	#$(Q)-cd $(SRC_DIR)/$(APP_DIR)/narrowc && sed -i "s:install.man::g"  man/Makefile
+	#$(Q)-cd $(SRC_DIR)/$(APP_DIR)/widec && sed -i "s:install.man::g"  man/Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C narrowc install.{libs,progs,data}
+	$(Q)rm -vf $(PREFIX)/lib/libtinfo.*
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C widec install.{libs,includes}
+
+#	# don't require -ltinfo when linking with --no-add-needed
+#	$(Q)for l in $(PREFIX)/lib/libncurses{,w}.so; do \
+#		echo $$l; \
+#		soname=$$(basename $$(readlink $$l)); \                                    
+#		rm -f $$l; \
+#		echo "INPUT($$soname -ltinfo)" > $$l; \
+#	done
+#
+#	#remove old lib
+#	$(Q)rm -vf $(PREFIX)/lib/libcurses{,w}.so
+#	$(Q)echo "INPUT(-lncurses)" > $(PREFIX)/lib/libcurses.so
+#	$(Q)echo "INPUT(-lncursesw)" > $(PREFIX)/lib/libcursesw.so
+#	$(Q)echo "INPUT(-ltinfo)" > $(PREFIX)/lib/libtermcap.so
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+
+
+################################################################################
+## Installation Details
+################################################################################
+#
+#$(TARGET) : $(patsubst %,$(DIR_DL)/%,$(objects))
+#	@$(PREBUILD)
+#	@rm -rf $(SRC_DIR)/$(APP_DIR) && cd $(DIR_SRC) && tar zxf $(DIR_DL)/$(DL_FILE)
+#	cd $(SRC_DIR)/$(APP_DIR) && mkdir -pv narrowc widec
+#
+#	# Build narrowc version.
+#	cd $(SRC_DIR)/$(APP_DIR)/narrowc && ln -svf ../configure .
+#	cd $(SRC_DIR)/$(APP_DIR)/narrowc && ./configure $(EXTRA_CONFIG) --with-ticlib
+#	cd $(SRC_DIR)/$(APP_DIR)/narrowc && make libs
+#	cd $(SRC_DIR)/$(APP_DIR)/narrowc && make -C progs
+#
+#	# Build widec version.
+#	cd $(SRC_DIR)/$(APP_DIR)/widec && ln -svf ../configure .
+#	cd $(SRC_DIR)/$(APP_DIR)/widec && ./configure $(EXTRA_CONFIG) \
+#		--enable-widec --without-progs
+#	cd $(SRC_DIR)/$(APP_DIR)/widec && make libs
+#
+#	# Install everything.
+#	cd $(SRC_DIR)/$(APP_DIR) && make -C narrowc install.{libs,progs,data}
+#	rm -vf $(PREFIX)/lib/libtinfo.*
+#	cd $(SRC_DIR)/$(APP_DIR) && make -C widec install.{libs,includes,man}
+#
+#	# don't require -ltinfo when linking with --no-add-needed
+#	for l in $(PREFIX)/lib/libncurses{,w}.so; do \
+#		soname=$$(basename $$(readlink $$l)); \                                    
+#		rm -f $$l; \
+#		echo "INPUT($$soname -ltinfo)" > $$l; \
+#	done
+#
+#	rm -vf $(PREFIX)/lib/libcurses{,w}.so
+#	echo "INPUT(-lncurses)" > $(PREFIX)/lib/libcurses.so
+#	echo "INPUT(-lncursesw)" > $(PREFIX)/lib/libcursesw.so
+#	echo "INPUT(-ltinfo)" > $(PREFIX)/lib/libtermcap.so
+
+#	@rm -rf $(SRC_DIR)/$(APP_DIR)
+#	@$(POSTBUILD)

@@ -1,0 +1,21 @@
+diff -Naur arping-2.05/Makefile arping-2.05/Makefile
+--- arping-2.05/Makefile	2004-09-25 00:43:37.000000000 +0700
++++ arping-2.05/Makefile	2015-11-24 09:21:34.480964402 +0700
+@@ -21,7 +21,7 @@
+ 
+ CC=gcc
+ # explicit pcap include dir is for redhat which is fux0red
+-CFLAGS=-g -I/usr/local/include -L/usr/local/lib -DFINDIF=$(FINDIF) -DUSE_NETIF=$(USE_NETIF) -DOPENBSD=$(OPENBSD) -DLINUX=$(LINUX) -DSOLARIS=$(SOLARIS) -DFREEBSD=$(FREEBSD) -DMACOSX=$(MACOSX) -I/usr/include/pcap
++CFLAGS=-g -I$(ROOTFS_DIR)/usr/include -L$(ROOTFS_DIR)/usr/lib -DFINDIF=$(FINDIF) -DUSE_NETIF=$(USE_NETIF) -DOPENBSD=$(OPENBSD) -DLINUX=$(LINUX) -DSOLARIS=$(SOLARIS) -DFREEBSD=$(FREEBSD) -DMACOSX=$(MACOSX) -I$(ROOTFS_DIR)/usr/include/pcap
+ 
+ all: message arping2
+ 
+@@ -102,7 +102,7 @@
+ arping2: arping-2/arping
+ arping-2/arping: $(O_arping2)
+ #	$(CC) `libnet-config --libs --defines --cflags` -o arping arping-2/arping.c -lnet -lpcap
+-	$(CC) -g -o arping arping-2/arping.c -lnet -lpcap $(EXTRA_LIBS)
++	$(CC) $(CFLAGS) -g -o arping arping-2/arping.c -lnet -lpcap $(EXTRA_LIBS)
+ 
+ clean:
+ 	rm -f *.o $(TARGETS)

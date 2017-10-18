@@ -1,0 +1,11 @@
+diff -Naur systemd-208/src/shared/missing.h systemd-208/src/shared/missing.h
+--- systemd-208/src/shared/missing.h	2013-09-18 05:15:30.274341825 +0700
++++ systemd-208/src/shared/missing.h	2015-11-06 10:45:17.456071425 +0700
+@@ -280,6 +280,7 @@
+ #  endif
+ #endif
+ 
++#define HAVE_DECL_NAME_TO_HANDLE_AT 1
+ #if !HAVE_DECL_NAME_TO_HANDLE_AT
+ struct file_handle {
+         unsigned int handle_bytes;

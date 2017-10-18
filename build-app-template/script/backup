@@ -1,0 +1,32 @@
+
+PROG       = backup
+PAK_VER    = 1
+
+DEPS       = ""
+
+
+VER        = backup
+APP_DIR    = backup
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+
+	$(Q)-mkdir -p 						$(ROOTFS_DIR)/newlib/var/ipfire/backup/bin
+	$(Q)install -v -m 755 $(CFG_DIR)/backup/backup.pl 	$(ROOTFS_DIR)/newlib/var/ipfire/backup/bin
+	$(Q)install -v -m 644 $(CFG_DIR)/backup/include 	$(ROOTFS_DIR)/newlib/var/ipfire/backup/
+	$(Q)install -v -m 644 $(CFG_DIR)/backup/exclude 	$(ROOTFS_DIR)/newlib/var/ipfire/backup/
+	$(Q)-chown nobody:nobody -R 				$(ROOTFS_DIR)/newlib/var/ipfire/backup/
+	$(Q)-mkdir -p 						$(ROOTFS_DIR)/newlib/var/ipfire/backup/addons
+	$(Q)-mkdir -p 						$(ROOTFS_DIR)/newlib/var/ipfire/backup/addons/includes
+	$(Q)-mkdir -p 						$(ROOTFS_DIR)/newlib/var/ipfire/backup/addons/backup
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

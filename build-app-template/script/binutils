@@ -1,0 +1,65 @@
+
+  
+  EXTRA_CONFIG = \
+	--prefix=/usr \
+	--host=$(CROSS) \
+	--enable-shared \
+	--disable-nls \
+	--with-abi=aapcs-linux \
+	--with-float=soft
+	
+  EXTRA_MAKE = tooldir=/usr
+  EXTRA_INSTALL = tooldir=/usr
+
+VER        = 2.22
+APP_DIR    = binutils-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+md5_$(DL_FILE) = ee0f10756c84979622b992a4a61ea3f5
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#PATCH
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/binutils-2.22-pt-pax-flags-20111121.patch
+	
+	
+	# texinfo 5 syntax-fix.
+	cd $(SRC_DIR)/$(APP_DIR) && sed -i -e "s/@colophon/@@colophon/" \
+				-e "s/doc@cygnus/doc@@cygnus/" bfd/doc/bfd.texinfo
+
+	$(Q)rm -rf $(SRC_DIR)/$(APP_DIR)/binutils-build && mkdir $(SRC_DIR)/$(APP_DIR)/binutils-build
+
+	# Prevent installing libiberty to lib64.
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's%\(^MULTIOSDIR = \).*%\1 ../lib%' libiberty/Makefile.in
+
+	#CONFIGURE
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/binutils-build && $(EXTRA_ENV) CFLAGS="-I$(ROOTFS_DIR)/usr/include  -I$(ROOTFS_DIR)/usr/include/freetype2 -I$(ROOTFS_DIR)/usr/include/libpng12" \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	MACHINE= $(SRC_DIR)/$(APP_DIR)/configure $(EXTRA_CONFIG)
+	
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/binutils-build && make $(EXTRA_MAKE) MACHINE=
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/binutils-build && make $(EXTRA_INSTALL) DESTDIR=$(ROOTFS_DIR) install MACHINE=
+	
+	$(Q)cp -v $(SRC_DIR)/$(APP_DIR)/include/libiberty.h $(ROOTFS_DIR)/usr/include
+
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

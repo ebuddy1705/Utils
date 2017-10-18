@@ -1,0 +1,138 @@
+
+
+VER        = 3.5.7-20150801-r13880
+APP_DIR    = squid-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 4e7d7d062159484563ef11f69a0df50a
+
+obj:=  _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-rm -rf $(SRC_DIR)/$(APP_DIR) && tar -xzf $(EXTPKGS_DIR)/$(DL_FILE) -C $(SRC_DIR)
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/usr \
+	BUILDCXX=g++ --host=arm-xilinx-linux-gnueabi --cache-file=squid.cache \
+	squid_cv_gnu_atomics=no \
+	LD_LIBRARY_PATH="/lib:/lib64:/usr/lib:/usr/lib64" \
+	LIBS=-lpthread \
+	ARCH=arm \
+		--host=$(CROSS) \
+		--build=x86_64-linux \
+		--sysconfdir=/etc/squid \
+		--datadir=/usr/lib/squid \
+		--mandir=/usr/share/man \
+		--libexecdir=/usr/lib/squid \
+		--localstatedir=/var \
+		--disable-ipv6 \
+		--disable-ssl \
+		--enable-poll \
+		--disable-icmp \
+		--disable-wccp \
+		--enable-ident-lookups \
+		--enable-storeio="aufs,diskd,ufs" \
+		--enable-underscores \
+		--enable-http-violations \
+		--enable-removal-policies="heap,lru" \
+		--enable-delay-pools \
+		--enable-snmp \
+		--enable-auth \
+		--enable-auth-basic \
+		--enable-auth-digest \
+		--enable-auth-negotiate \
+		--enable-auth-ntlm \
+		--enable-log-daemon-helpers \
+		--enable-url-rewrite-helpers \
+		--enable-build-info \
+		--enable-eui \
+		--with-pthreads \
+		--with-dl \
+		--with-filedescriptors=$$(( 16384 * 64 )) \
+		--with-aio \
+		--enable-async-io=8 \
+		--enable-unlinkd \
+		--enable-internal-dns \
+		--enable-epoll \
+		--disable-kqueue \
+		--enable-select \
+		--enable-cache-digests \
+		--enable-forw-via-db \
+		--enable-htcp \
+		--enable-kill-parent-hack \
+		--disable-wccpv2 \
+		--enable-icap-client \
+		--disable-esi \
+		--enable-zph-qos \
+		--with-krb5-config=no \
+		--enable-linux-netfilter
+	
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make LD_LIBRARY_PATH="/lib:/lib64:/usr/lib:/usr/lib64"
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make LD_LIBRARY_PATH="/lib:/lib64:/usr/lib:/usr/lib64" DESTDIR=$(ROOTFS_DIR) install
+	
+	#compile ok
+	$(Q)rm -f $(ROOTFS_DIR)/etc/squid/squid.conf
+	$(Q)ln -sf /var/ipfire/proxy/squid.conf $(ROOTFS_DIR)/etc/squid/squid.conf
+	$(Q)rm -f $(ROOTFS_DIR)/etc/squid/cachemgr.conf
+	$(Q)ln -sf /var/ipfire/proxy/cachemgr.conf $(ROOTFS_DIR)/etc/squid/cachemgr.conf
+	$(Q)rm -f $(ROOTFS_DIR)/etc/squid/errors
+	$(Q)ln -sf /usr/lib/squid/errors/en $(ROOTFS_DIR)/etc/squid/errors
+
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/log/cache $(ROOTFS_DIR)/var/log/squid $(ROOTFS_DIR)/var/log/updatexlrator
+	$(Q)touch $(ROOTFS_DIR)/var/log/squid/access.log
+	$(Q)-chown -R squid:squid $(ROOTFS_DIR)/var/log/squid $(ROOTFS_DIR)/var/log/cache $(ROOTFS_DIR)/var/log/updatexlrator
+
+	$(Q)cp $(ROOTFS_DIR)/usr/lib/squid/cachemgr.cgi $(ROOTFS_DIR)/srv/web/ipfire/cgi-bin/cachemgr.cgi
+	$(Q)-chown nobody.nobody $(ROOTFS_DIR)/srv/web/ipfire/cgi-bin/cachemgr.cgi
+
+	$(Q)cp -f $(CFG_DIR)/updxlrator/updxlrator $(ROOTFS_DIR)/usr/sbin/updxlrator
+	$(Q)cp -f $(CFG_DIR)/updxlrator/checkup $(ROOTFS_DIR)/var/ipfire/updatexlrator/bin/checkup
+	$(Q)cp -f $(CFG_DIR)/updxlrator/download $(ROOTFS_DIR)/var/ipfire/updatexlrator/bin/download
+	$(Q)cp -f $(CFG_DIR)/updxlrator/convert $(ROOTFS_DIR)/var/ipfire/updatexlrator/bin/convert
+	$(Q)cp -f $(CFG_DIR)/updxlrator/lscache $(ROOTFS_DIR)/var/ipfire/updatexlrator/bin/lscache
+	$(Q)cp -f $(CFG_DIR)/updxlrator/checkdeaddl $(ROOTFS_DIR)/var/ipfire/updatexlrator/bin/checkdeaddl
+
+	$(Q)cp -f $(CFG_DIR)/updxlrator/updxlrator-lib.pl $(ROOTFS_DIR)/var/ipfire/updatexlrator//updxlrator-lib.pl
+
+	$(Q)chmod 755 $(ROOTFS_DIR)/usr/sbin/updxlrator $(ROOTFS_DIR)/var/ipfire/updatexlrator/bin/checkup \
+		$(ROOTFS_DIR)/var/ipfire/updatexlrator/bin/download \
+		$(ROOTFS_DIR)/var/ipfire/updatexlrator/bin/convert \
+		$(ROOTFS_DIR)/var/ipfire/updatexlrator/bin/lscache \
+		$(ROOTFS_DIR)/var/ipfire/updatexlrator/bin/checkdeaddl
+
+	$(Q)ln -fs /bin/false $(ROOTFS_DIR)/var/ipfire/updatexlrator/autocheck/cron.daily
+	$(Q)ln -fs /bin/false $(ROOTFS_DIR)/var/ipfire/updatexlrator/autocheck/cron.monthly
+	$(Q)ln -fs /bin/false $(ROOTFS_DIR)/var/ipfire/updatexlrator/autocheck/cron.weekly
+
+	$(Q)-chown -R nobody:nobody $(ROOTFS_DIR)/var/ipfire/updatexlrator
+	$(Q)-chown nobody.squid $(ROOTFS_DIR)/var/updatecache
+	$(Q)-chown nobody.squid $(ROOTFS_DIR)/var/updatecache/download
+	$(Q)-chown nobody.squid $(ROOTFS_DIR)/var/updatecache/metadata
+	$(Q)chmod 775 $(ROOTFS_DIR)/var/updatecache
+	$(Q)chmod 775 $(ROOTFS_DIR)/var/updatecache/download
+	$(Q)chmod 775 $(ROOTFS_DIR)/var/updatecache/metadata
+	$(Q)chmod 755 $(ROOTFS_DIR)/var/log/updatexlrator
+	$(Q)chmod 755 $(ROOTFS_DIR)/srv/web/ipfire/html/images/updbooster
+	
+	$(Q)-chown squid:squid $(ROOTFS_DIR)/var/log/squid
+	$(Q)ln -sf /usr/lib/squid $(ROOTFS_DIR)/usr/lib/squid/auth
+	$(Q)cp -f $(CFG_DIR)/proxy/proxy.pac $(ROOTFS_DIR)/srv/web/ipfire/html/proxy.pac
+	$(Q)-chown nobody.nobody $(ROOTFS_DIR)/srv/web/ipfire/html/proxy.pac
+	$(Q)ln -sf /srv/web/ipfire/html/proxy.pac $(ROOTFS_DIR)/srv/web/ipfire/html/wpad.dat
+
+	#Copy stylesheets for the errorpages
+	$(Q)cp -f $(CFG_DIR)/proxy/errorpage-ipfire.css $(ROOTFS_DIR)/var/ipfire/proxy/
+	$(Q)cp -f $(ROOTFS_DIR)/etc/squid/errorpage.css $(ROOTFS_DIR)/var/ipfire/proxy/errorpage-squid.css
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+

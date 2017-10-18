@@ -1,0 +1,22 @@
+
+
+VER        = 1.10.2
+APP_DIR    = jquery-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).min.js
+md5_$(DL_FILE) = 628072e7212db1e8cdacb22b21752cda
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/srv/web/ipfire/html/include
+	$(Q)install -v -m 644 $(SRC_DIR)/$(DL_FILE) $(ROOTFS_DIR)/srv/web/ipfire/html/include/jquery.js
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

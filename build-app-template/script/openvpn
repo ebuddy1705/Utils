@@ -1,0 +1,54 @@
+
+
+VER        = 2.3.6
+APP_DIR    = openvpn-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.xz
+md5_$(DL_FILE) = bcc30c296566df14feebdd8aa0e408ca
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc \
+	--sysconfdir=/var/ipfire/ovpn \
+		--enable-iproute2 \
+		--enable-password-save \
+		--enable-plugins \
+		--enable-plugin-auth-pam \
+		--enable-plugin-down-root
+		
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)-cd $(DIR_APP) && cp -Rvf $(CFG_DIR)/ovpn $(ROOTFS_DIR)/var/ipfire/
+	$(Q)--mkdir -vp $(ROOTFS_DIR)/usr/lib/openvpn/plugins
+	$(Q)--mkdir -vp $(ROOTFS_DIR)/var/log/openvpn
+	$(Q)--mkdir -vp $(ROOTFS_DIR)/var/ipfire/ovpn/ca
+	$(Q)--mkdir -vp $(ROOTFS_DIR)/var/ipfire/ovpn/ccd
+	$(Q)--mkdir -vp $(ROOTFS_DIR)/var/ipfire/ovpn/crls
+	$(Q)--mkdir -vp $(ROOTFS_DIR)/var/ipfire/ovpn/n2nconf
+	$(Q)--mkdir -vp $(ROOTFS_DIR)/var/ipfire/ovpn/scripts
+	$(Q)-touch $(ROOTFS_DIR)/var/ipfire/ovpn/ovpn-leases.db
+	$(Q)-chmod 700 $(ROOTFS_DIR)/var/ipfire/ovpn/ovpn-leases.db
+	$(Q)-chown -R root:root $(ROOTFS_DIR)/var/ipfire/ovpn/scripts
+	$(Q)-chown -R nobody:nobody $(ROOTFS_DIR)/var/ipfire/ovpn
+	$(Q)-chmod 700 $(ROOTFS_DIR)/var/ipfire/ovpn/certs
+	$(Q)-mv -v $(ROOTFS_DIR)/var/ipfire/ovpn/verify $(ROOTFS_DIR)/usr/lib/openvpn/verify
+	$(Q)-chown root:root $(ROOTFS_DIR)/usr/lib/openvpn/verify
+	$(Q)-chmod 755 $(ROOTFS_DIR)/usr/lib/openvpn/verify
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

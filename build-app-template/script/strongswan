@@ -1,0 +1,73 @@
+
+
+VER        = 5.3.2
+APP_DIR    = strongswan-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+md5_$(DL_FILE) = fab014be1477ef4ebf9a765e10f8802c
+
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR) && patch -Np1 < $(PATCHES_DIR)/strongswan-ipfire.patch
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib" \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	./configure --prefix=/usr \
+		--host=$(CROSS) CC=$(CROSS)-gcc \
+		--sysconfdir=/etc \
+		--with-systemdsystemunitdir=/usr/service  \
+		--enable-curl \
+		--enable-dhcp \
+		--enable-farp \
+		--enable-openssl \
+		--enable-gcrypt \
+		--enable-ccm \
+		--enable-ctr \
+		--enable-gcm \
+		--enable-xauth-eap \
+		--enable-xauth-noauth \
+		--enable-eap-radius \
+		--enable-eap-tls \
+		--enable-eap-ttls \
+		--enable-eap-peap \
+		--enable-eap-mschapv2 \
+		--enable-eap-identity \
+		--disable-padlock
+		
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	# Remove all library files we don't want or need.
+	$(Q)rm -vf $(ROOTFS_DIR)/usr/lib/ipsec/plugins/*.{,l}a
+
+	$(Q)-rm -rfv $(ROOTFS_DIR)/etc/rc*.d/*ipsec
+	$(Q)cp $(CENTIC_SRC)/initscripts/init.d/ipsec $(ROOTFS_DIR)/etc/rc.d/init.d/ipsec
+	$(Q)rm -f $(ROOTFS_DIR)/etc/ipsec.conf $(ROOTFS_DIR)/etc/ipsec.secrets
+	$(Q)ln -sf /var/ipfire/vpn/ipsec.conf $(ROOTFS_DIR)/etc/ipsec.conf
+	$(Q)ln -sf /var/ipfire/vpn/ipsec.secrets $(ROOTFS_DIR)/etc/ipsec.secrets
+
+	$(Q)rm -rf $(ROOTFS_DIR)/etc/ipsec.d/{cacerts,certs,crls}
+	$(Q)ln -sf /var/ipfire/ca    $(ROOTFS_DIR)/etc/ipsec.d/cacerts
+	$(Q)ln -sf /var/ipfire/certs $(ROOTFS_DIR)/etc/ipsec.d/certs
+	$(Q)ln -sf /var/ipfire/crls  $(ROOTFS_DIR)/etc/ipsec.d/crls
+
+	$(Q)install -v -m 644 $(CFG_DIR)/strongswan/charon.conf \
+		$(ROOTFS_DIR)/etc/strongswan.d/charon.conf
+		
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

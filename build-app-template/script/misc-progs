@@ -1,0 +1,29 @@
+
+VER        = ipfire
+APP_DIR    = misc-progs
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)rm -rf $(SRC_DIR)/$(APP_DIR) && cp -rf $(CENTIC_SRC)/$(APP_DIR) $(SRC_DIR)
+	$(Q)cp -rf $(CENTIC_INFO_DIR)/centic-info.h $(SRC_DIR)/$(APP_DIR)
+	
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/misc-progs.patch
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make CFLAGS="-I$(ROOTFS_DIR)/usr/include  -Wall -g" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " CC=${CROSS}-gcc LD=${CROSS}-ld PREFIX=$(ROOTFS_DIR)/usr/local
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make PREFIX=$(ROOTFS_DIR)/usr/local install
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

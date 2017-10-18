@@ -1,0 +1,27 @@
+#!/bin/bash
+. ./tools/Config
+
+
+
+VER=1.2.8
+APP_DIR=zlib-${VER}
+DL_FROM=${URL_SOURCE_DL}
+DL_FILE=${APP_DIR}.tar.gz
+md5="44d667c142d7cda120332623eab69f40"
+
+
+download_file ${DL_FROM} ${DL_FILE}
+uncompress ${SRC_DIR} ${DL_FILE}
+
+CFLAGS="-fPIC -DPIC"
+cd ${SRC_DIR}/${APP_DIR}
+
+CROSS_PREFIX=${CROSS}- ./configure --shared --prefix=${PREFIX}
+make -C ${SRC_DIR}/${APP_DIR} clean all
+make -C ${SRC_DIR}/${APP_DIR} DESTDIR=${ROOTFS_DIR} install && exit 0
+
+
+	
+	
+
+

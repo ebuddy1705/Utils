@@ -1,0 +1,54 @@
+
+VER        = 13
+
+THISAPP    = kmod-$(VER)
+DL_FILE    = $(THISAPP).tar.xz
+DL_FROM    = $(URL_IPFIRE)
+DIR_APP    = $(DIR_SRC)/$(THISAPP)
+TARGET     = $(DIR_INFO)/$(THISAPP)
+
+
+
+VER        = 13
+APP_DIR    = kmod-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.xz
+md5_$(DL_FILE) = d5aba43b9370cd52f3cb35e82a1aa595
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/usr \
+	  --host=$(CROSS) \
+	  CC=$(CROSS)-gcc \
+	  --bindir=/bin \
+	  --sysconfdir=/etc \
+	  --enable-zlib \
+	  --with-zlib \
+	  zlib_CFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	  zlib_LIBS="-L$(ROOTFS_DIR)/usr/lib -lz" \
+	  --disable-manpages
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	# Create symlinks
+	$(Q)ln -svf ../bin/kmod $(ROOTFS_DIR)/sbin/modprobe
+	$(Q)ln -svf ../bin/kmod $(ROOTFS_DIR)/sbin/modinfo
+	$(Q)ln -svf ../bin/kmod $(ROOTFS_DIR)/sbin/insmod
+	$(Q)ln -svf ../bin/kmod $(ROOTFS_DIR)/sbin/rmmod
+	$(Q)ln -svf ../bin/kmod $(ROOTFS_DIR)/sbin/depmod
+	$(Q)ln -svf ../bin/kmod $(ROOTFS_DIR)/sbin/lsmod
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+	
+

@@ -1,0 +1,32 @@
+
+VER        = 4.6.21
+APP_DIR    = db-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)rm -rf $(SRC_DIR)/$(APP_DIR) && tar -xzf $(EXTPKGS_DIR)/$(DL_FILE) -C $(SRC_DIR)
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/build_unix && ../dist/configure --prefix=/usr \
+	--host=$(CROSS) \
+	--enable-compat185 \
+	--enable-dbm       \
+	--disable-static   \
+	--enable-cxx \
+	 CC=$(CROSS)-gcc \
+	 CXX=$(CROSS)-g++
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/build_unix && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/build_unix && make DESTDIR=$(ROOTFS_DIR) install
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

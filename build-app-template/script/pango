@@ -1,0 +1,104 @@
+
+
+VER        = 1.30.1
+APP_DIR    = pango-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.xz
+md5_$(DL_FILE) = ec3c1f236ee9bd4a982a5f46fcaff7b9
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+#if set DESTDIR=$(ROOTFS_DIR) then rrdtool may be error
+#if unset DESTDIR then pango etc module file error
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-O3 -fPIC -shared -I$(ROOTFS_DIR)/usr/include -I$(ROOTFS_DIR)/usr/include/cairo -I$(ROOTFS_DIR)/usr/include/glib-2.0 -I$(ROOTFS_DIR)/usr/lib/glib-2.0/include -I$(ROOTFS_DIR)/usr/include/pixman-1 -I$(ROOTFS_DIR)/usr/include/freetype2 -I$(ROOTFS_DIR)/usr/include/libdrm -I$(ROOTFS_DIR)/usr/include/libpng12" \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc LD=$(CROSS)-ld \
+	--sysconfdir=/etc \
+	--with-x=no \
+	--enable-cairo \
+	--enable-win32-font=no \
+	--enable-win32=no \
+	--enable-ft=yes \
+	--enable-ps=no \
+	--enable-pdf=no \
+	--without-x \
+	--enable-static=no 
+	
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) ;\
+	sed -i 's:lib64:lib:g' Makefile ;\
+	sed -i 's:\-I/usr/lib:\-I$(ROOTFS_DIR)/usr/lib:g' Makefile ;\
+	sed -i 's:\-I/usr/include:\-I$(ROOTFS_DIR)/usr/include:g' Makefile
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make  
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)-mkdir $(ROOTFS_DIR)/etc/pango
+	$(Q)-touch $(ROOTFS_DIR)/etc/pango/pango.modules
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+
+	
+	
+#	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-O3 -fPIC -shared -I$(ROOTFS_DIR)/usr/include -I$(ROOTFS_DIR)/usr/include/cairo -I$(ROOTFS_DIR)/usr/include/glib-2.0 -I$(ROOTFS_DIR)/usr/lib/glib-2.0/include -I$(ROOTFS_DIR)/usr/include/pixman-1 -I$(ROOTFS_DIR)/usr/include/freetype2 -I$(ROOTFS_DIR)/usr/include/libdrm -I$(ROOTFS_DIR)/usr/include/libpng12" \
+#	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+#	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+#	FREETYPE_CFLAGS="-I$(ROOTFS_DIR)/usr/include/freetype2" \
+#	FREETYPE_LIBS="-L$(ROOTFS_DIR)/usr/lib -lfreetype" \
+#	FONTCONFIG_CFLAGS="-I$(ROOTFS_DIR)/usr/include/fontconfig" \
+#	FONTCONFIG_LIBS="-L$(ROOTFS_DIR)/usr/lib -lfontconfig" \
+#	CAIRO_CFLAGS="-I$(ROOTFS_DIR)/usr/include/cairo -I$(ROOTFS_DIR)/usr/include/glib-2.0 -I$(ROOTFS_DIR)/usr/lib/glib-2.0/include -I$(ROOTFS_DIR)/usr/include/pixman-1 -I$(ROOTFS_DIR)/usr/include/freetype2 -I$(ROOTFS_DIR)/usr/include/libdrm -I$(ROOTFS_DIR)/usr/include/libpng12" \
+#	CAIRO_LIBS="-L$(ROOTFS_DIR)/usr/lib -lcairo" \
+#	CAIRO_PREFIX="$(ROOTFS_DIR)/usr" \
+#	GLIB_CFLAGS="-I$(ROOTFS_DIR)/usr/include/glib-2.0 -I$(ROOTFS_DIR)/usr/lib/glib-2.0/include" \
+#	GLIB_LIBS="-L$(ROOTFS_DIR)/usr/lib -lgobject-2.0 -lgmodule-2.0 -pthread -lglib-2.0" \
+#	./configure --prefix=/usr \
+#	--host=$(CROSS) CC=$(CROSS)-gcc LD=$(CROSS)-ld \
+#	--sysconfdir=/etc \
+#	--with-x=no \
+#	--enable-cairo \
+#	--enable-win32-font=no \
+#	--enable-win32=no \
+#	--enable-ft=yes \
+#	--enable-ps=no \
+#	--enable-pdf=no \
+#	--without-x \
+#	--enable-static=no 
+#	
+#	
+#	$(Q)cd $(SRC_DIR)/$(APP_DIR) ;\
+#	sed -i 's:lib64:lib:g' Makefile ;\
+#	sed -i 's:\-I/usr/lib:\-I$(ROOTFS_DIR)/usr/lib:g' Makefile ;\
+#	sed -i 's:\-I/usr/include:\-I$(ROOTFS_DIR)/usr/include:g' Makefile
+#	
+#	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make  CAIRO_PREFIX="$(ROOTFS_DIR)/usr" \
+#					      GLIB_CFLAGS="-I$(ROOTFS_DIR)/usr/include/glib-2.0 -I$(ROOTFS_DIR)/usr/lib/glib-2.0/include" \
+#					      LD=$(CROSS)-ld \
+#					      CFLAGS="-O3 -fPIC -shared -I$(ROOTFS_DIR)/usr/include -I$(ROOTFS_DIR)/usr/include/cairo -I$(ROOTFS_DIR)/usr/include/glib-2.0 -I$(ROOTFS_DIR)/usr/lib/glib-2.0/include -I$(ROOTFS_DIR)/usr/include/pixman-1 -I$(ROOTFS_DIR)/usr/include/freetype2 -I$(ROOTFS_DIR)/usr/include/libdrm -I$(ROOTFS_DIR)/usr/include/libpng12"
+#	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+#	
+#	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+#	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+#	
+#	$(Q)-mkdir $(ROOTFS_DIR)/etc/pango
+#	$(Q)-touch $(ROOTFS_DIR)/etc/pango/pango.modules

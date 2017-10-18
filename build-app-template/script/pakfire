@@ -1,0 +1,34 @@
+
+VER        = 0.99
+APP_DIR    = pakfire
+PAKFIRE_VERSION = $(VERSION)-arm
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)rm -rf $(SRC_DIR)/$(APP_DIR) && cp -rf $(CENTIC_SRC)/$(APP_DIR) $(SRC_DIR)
+	$(Q)-mkdir -p $(ROOTFS_DIR)/opt/pakfire/{db/{meta,lists,rootfiles,installed,core},etc,lib,tmp} \
+	$(ROOTFS_DIR)/var/log/pakfire $(ROOTFS_DIR)/var/cache/pakfire
+	$(Q)cp -fRv $(SRC_DIR)/pakfire/* $(ROOTFS_DIR)/opt/$(APP_DIR)
+	$(Q)sed -e "s/@VERSION@/$(PAKFIRE_VERSION)/g" \
+		< $(ROOTFS_DIR)/opt/$(APP_DIR)/pakfire.conf \
+		> $(ROOTFS_DIR)/opt/$(APP_DIR)/etc/pakfire.conf
+	$(Q)-chown root.root $(ROOTFS_DIR)/opt/$(APP_DIR) -R
+	$(Q)-chmod 755 $(ROOTFS_DIR)/opt/$(APP_DIR)/pakfire
+	$(Q)touch $(ROOTFS_DIR)/var/log/pakfire.log
+	$(Q)-chown root.nobody $(ROOTFS_DIR)/var/log/pakfire.log
+	$(Q)-chmod 664 $(ROOTFS_DIR)/var/log/pakfire.log
+	$(Q)ln -sf ../../var/log/pakfire $(ROOTFS_DIR)/opt/pakfire/logs
+	$(Q)ln -sf ../../var/cache/pakfire $(ROOTFS_DIR)/opt/pakfire/cache
+
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

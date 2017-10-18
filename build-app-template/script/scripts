@@ -1,0 +1,26 @@
+
+VER        = ipfire
+APP_DIR    = scripts
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	# Scripts
+	$(Q)cp -rf $(CENTIC_SRC)/$(APP_DIR) $(SRC_DIR)
+	$(Q)-mkdir -p $(ROOTFS_DIR)/usr/local/bin
+	$(Q)for i in `find $(SRC_DIR)/$(APP_DIR) -maxdepth 1 -type f`; do \
+	    sed "s+CONFIG_ROOT+$(CONFIG_ROOT)+g" $$i > $(ROOTFS_DIR)/usr/local/bin/`basename $$i`; \
+	    chmod 755 $(ROOTFS_DIR)/usr/local/bin/`basename $$i`; \
+	done
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+

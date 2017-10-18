@@ -1,0 +1,48 @@
+
+VER        = 0.99.10.0
+APP_DIR    = Linux-PAM-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+md5_$(DL_FILE) = be4dd1d34ac5933408e13e48f3eb710a
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR);\
+	patch -Np1 -i $(PATCHES_DIR)/Linux-PAM-0.99.10.0.patch
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib" \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	./configure --prefix=/usr \
+	  --host=$(CROSS) CC=$(CROSS)-gcc \
+	  --includedir=/usr/include/pam \
+	  --libdir=/usr/lib \
+	  --sbindir=/lib/security \
+	  --enable-securedir=/lib/security \
+	  --enable-docdir=/usr/share/doc/Linux-PAM-$(VER) \
+	  --enable-read-both-confs --disable-nls 
+	  
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)-cp -rf $(ROOTFS_DIR)/usr/include/pam $(ROOTFS_DIR)/usr/include/security
+	$(Q)-chmod -v 4755 $(ROOTFS_DIR)/lib/security/unix_chkpwd
+	$(Q)-mv -v $(ROOTFS_DIR)/lib/security/pam_tally $(ROOTFS_DIR)/sbin
+	$(Q)-mv -v $(ROOTFS_DIR)/usr/lib/libpam*.so.0* $(ROOTFS_DIR)/lib
+	$(Q)-ln -v -sf ../../lib/libpam.so.0.81.10 $(ROOTFS_DIR)/usr/lib/libpam.so
+	$(Q)-ln -v -sf ../../lib/libpamc.so.0.81.0 $(ROOTFS_DIR)/usr/lib/libpamc.so
+	$(Q)-ln -v -sf ../../lib/libpam_misc.so.0.81.3 $(ROOTFS_DIR)/usr/lib/libpam_misc.so
+	$(Q)-mkdir -p $(ROOTFS_DIR)/etc/pam.d
+	$(Q)-cp $(CFG_DIR)/pam/* $(ROOTFS_DIR)/etc/pam.d
+	$(Q)-chown root.root -R $(ROOTFS_DIR)/etc/pam.d
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

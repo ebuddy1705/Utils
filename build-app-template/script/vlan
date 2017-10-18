@@ -1,0 +1,29 @@
+
+VER        = 1.9
+APP_DIR    = vlan
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).$(VER).tar.gz
+md5_$(DL_FILE) = 5f0c6060b33956fb16e11a15467dd394
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+
+	
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make purge vconfig CC=$(CROSS)-gcc STRIP=$(CROSS)-strip \
+	CCFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib"
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -c -p -m 0755 vconfig $(ROOTFS_DIR)/sbin
+	
+	$(Q)cp -rf $(CFG_DIR)/vlan/vlans.pl  $(ROOTFS_DIR)/usr/local/bin/
+
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

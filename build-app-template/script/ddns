@@ -1,0 +1,29 @@
+
+
+VER        = 008
+APP_DIR    = ddns-$(VER)
+DL_FROM    = http://source.ipfire.org/releases/ddns/
+DL_FILE    = $(APP_DIR).tar.xz
+md5_$(DL_FILE) = f8b9441f18c2667d440d5416ec2e0011
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./autogen.sh
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc \
+	--sysconfdir=/var/ipfire \
+	--disable-manpages
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i "s:lib64:lib:" Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

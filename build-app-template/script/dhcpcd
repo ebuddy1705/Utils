@@ -1,0 +1,43 @@
+
+
+
+VER        = 6.7.1
+APP_DIR    = dhcpcd-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+md5_$(DL_FILE) = ffb716b0e9327968e7200d519e1d4c0d
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/ \
+			--host=$(CROSS) CC=$(CROSS)-gcc \
+			--sysconfdir=/var/ipfire/dhcpc \
+			--dbdir=/var/ipfire/dhcpc \
+			--libexecdir=/var/ipfire/dhcpc \
+			--mandir=/usr/share/man --disable-nls
+			
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	
+	$(Q)ln -sf /etc/rc.d/init.d/networking/dhcpcd.exe \
+		$(CONFIG_ROOT)/dhcpc/dhcpcd-hooks/70-dhcpcd.exe
+	$(Q)rm -f $(CONFIG_ROOT)/dhcpc/dhcpcd-hooks/20-resolv.conf
+	$(Q)rm -f $(CONFIG_ROOT)/dhcpc/dhcpcd-hooks/50-dhcpcd-compat
+	$(Q)rm -f $(CONFIG_ROOT)/dhcpc/dhcpcd-hooks/50-ntp.conf
+	$(Q)rm -f $(CONFIG_ROOT)/dhcpc/dhcpcd-hooks/50-yp.conf
+	$(Q)rm -f $(CONFIG_ROOT)/dhcpc/dhcpcd-hooks/50-ypbind
+
+	$(Q)sed -i -e "s|-ge 576|-gt 576|g" $(CONFIG_ROOT)/dhcpc/dhcpcd-hooks/10-mtu
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

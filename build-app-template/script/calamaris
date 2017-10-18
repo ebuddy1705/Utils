@@ -1,0 +1,24 @@
+
+
+VER        = 2.59
+APP_DIR    = calamaris-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 63c233b3407f9aec34b03647ed7fc852
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+
+	$(Q)$(Q)cd $(SRC_DIR)/$(APP_DIR) && cp -rf $(CFG_DIR)/calamaris/* $(ROOTFS_DIR)/newlib/var/ipfire/proxy/calamaris/bin/
+	$(Q)chmod 755 $(ROOTFS_DIR)/newlib/var/ipfire/proxy/calamaris/bin/{calamaris,mkreport}
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

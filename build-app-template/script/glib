@@ -1,0 +1,47 @@
+
+VER        = 2.22.2
+APP_DIR    = glib-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.xz
+md5_$(DL_FILE) = 9bd3ac535c24b6c162be13b2c43c5adc
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)rm -rf $(SRC_DIR)/$(APP_DIR) && tar -jxf $(EXTPKGS_DIR)/$(APP_DIR).tar.bz2 -C $(SRC_DIR)
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && LIBFFI_CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	LIBFFI_LIBS="-L$(ROOTFS_DIR)/usr/lib " \
+	ZLIB_CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	ZLIB_LIBS="-L$(ROOTFS_DIR)/usr/lib  -lz" \
+	PCRE_CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	PCRE_LIBS="-L$(ROOTFS_DIR)/usr/lib  -lpcre" \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	glib_cv_stack_grows=no \
+	glib_cv_uscore=yes \
+	ac_cv_func_posix_getpwuid_r=yes \
+	ac_cv_func_posix_getgrgid_r=yes \
+	./configure --prefix=/usr \
+	--build=i686 \
+	--target=$(CROSS) \
+	--host=$(CROSS) \
+	CC=$(CROSS)-gcc LD=$(CROSS)-ld \
+	--sysconfdir=/etc \
+	--with-pcre=system
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

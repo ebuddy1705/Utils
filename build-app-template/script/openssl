@@ -1,0 +1,68 @@
+VER        = 1.0.2d
+APP_DIR    = openssl-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 38dd619b2e77cbac69b99f52a053d25a
+
+CFLAGS += -DPURIFY -fPIC -O2 -Wall -I$(ROOTFS_DIR)/usr/include/
+
+obj:= _download_$(DL_FILE) _build _clean
+
+export RPM_OPT_FLAGS = $(CFLAGS)
+
+CONFIGURE_OPTIONS = \
+	--prefix=/usr \
+        --install_prefix=$(ROOTFS_DIR) \
+	--openssldir=/etc/ssl \
+	--enginesdir=/usr/lib/openssl/engines \
+	--with-zlib-lib=$(ROOTFS_DIR)/usr/lib \
+	--with-zlib-include=$(ROOTFS_DIR)/usr/include \
+	shared \
+	zlib-dynamic \
+	enable-camellia \
+	enable-md2 \
+	enable-seed \
+	enable-tlsext \
+	enable-rfc3779 \
+	no-idea \
+	no-mdc2 \
+	no-rc5 \
+	no-srp \
+	-DSSL_FORBID_ENULL
+
+CONFIGURE_OPTIONS += linux-generic32
+CONFIGURE_OPTIONS += no-sse2
+
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/openssl-1.0.0-beta5-enginesdir.patch; \
+	patch -Np1 < $(PATCHES_DIR)/openssl-1.0.2a-rpmbuild.patch; \
+	patch -Np1 < $(PATCHES_DIR)/openssl-1.0.1m-weak-ciphers.patch; \
+	patch -Np1 < $(PATCHES_DIR)/openssl-disable-sslv2-sslv3.patch
+
+	# Apply our CFLAGS
+	$(Q)cd $(SRC_DIR)/$(APP_DIR); sed -i Configure -e "s/-O3 -fomit-frame-pointer/$(CFLAGS)/g"; \
+	find crypto/ -name Makefile -exec sed 's/^ASFLAGS=/&-Wa,--noexecstack /' -i {} \; 
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR); CROSS_COMPILE="$(CROSS)-" ./Configure $(CONFIGURE_OPTIONS); \
+	make depend; \
+	make install
+
+	$(Q)install -m 0644 $(CFG_DIR)/ssl/openssl.cnf $(ROOTFS_DIR)/etc/ssl
+	$(Q)-rm -vfr $(ROOTFS_DIR)/etc/ssl/man
+	$(Q)-mv $(ROOTFS_DIR)/usr/lib/engines $(ROOTFS_DIR)/usr/lib/openssl
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

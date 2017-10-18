@@ -1,0 +1,70 @@
+
+VER        = 3.2.0
+APP_DIR    = fcron-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).src.tar.gz
+md5_$(DL_FILE) = 4b031c2fba32a98fa814d1557158b0e9
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR);\
+	patch -Np1 -i $(PATCHES_DIR)/fcron-3.2.0.patch
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ac_cv_func_memcmp_working=yes \
+	ROOTDIR=$(ROOTFS_DIR) \
+	./configure --prefix=/usr \
+	    --host=$(CROSS) CC=$(CROSS)-gcc STRIP=$(CROSS)-strip \
+	    --sysconfdir=/etc \
+	    --without-sendmail \
+	    --with-spooldir=/var/spool/cron \
+	    --with-fifodir=/var/run \
+	    --with-piddir=/var/run \
+	    --with-username=cron \
+	    --with-groupname=cron \
+	    --with-run-non-privileged=no \
+	    --with-fcrondyn=no \
+	    --with-sysfcrontab=no \
+	    --with-boot-install=no \
+	    --with-pam=no \
+	    --with-selinux=no \
+	    --with-shell=/bin/sh \
+	    --with-editor=/bin/vi
+
+	  
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/spool/cron
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/run
+	$(Q)-mkdir -p $(ROOTFS_DIR)/usr/lib/systemd/system
+	$(Q)-mkdir -p $(ROOTFS_DIR)/etc/cron
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) SYSTEMD_DIR=no install
+
+	
+	$(Q)echo "root" > $(ROOTFS_DIR)/etc/fcron.allow
+	$(Q)echo "all"  > $(ROOTFS_DIR)/etc/fcron.deny
+	$(Q)chmod u-s $(ROOTFS_DIR)/usr/bin/fcrontab $(ROOTFS_DIR)/usr/bin/fcronsighup
+	$(Q)mkdir -p $(ROOTFS_DIR)/etc/fcron.minutely $(ROOTFS_DIR)/etc/fcron.cyclic $(ROOTFS_DIR)/etc/fcron.hourly \
+		$(ROOTFS_DIR)/etc/fcron.daily $(ROOTFS_DIR)/etc/fcron.weekly $(ROOTFS_DIR)/etc/fcron.monthly
+
+	#Create Placeholder files
+	$(Q)echo "Place scripts run minutely here ..." > $(ROOTFS_DIR)/etc/fcron.minutely/info.txt
+	$(Q)echo "Place scripts run cyclic here ..." > 	$(ROOTFS_DIR)/etc/fcron.cyclic/info.txt 
+	$(Q)echo "Place scripts run hourly here ..." > $(ROOTFS_DIR)/etc/fcron.hourly/info.txt
+	$(Q)echo "Place scripts run daily here ..." > $(ROOTFS_DIR)/etc/fcron.daily/info.txt
+	$(Q)echo "Place scripts run weekly here ..." > $(ROOTFS_DIR)/etc/fcron.weekly/info.txt
+	$(Q)echo "Place scripts run monthly here ..." > $(ROOTFS_DIR)/etc/fcron.monthly/info.txt
+	$(Q)chmod 640 $(ROOTFS_DIR)/etc/fcron.{conf,allow,deny}
+
+	$(Q)cp -rf $(CFG_DIR)/cron/crontab $(ROOTFS_DIR)/etc/cron/
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

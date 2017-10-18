@@ -1,0 +1,39 @@
+
+VER        = 1.23.1
+APP_DIR    = busybox-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#EXTRACT
+	$(Q)-rm -rf $(SRC_DIR)/$(APP_DIR) && tar -jxf $(EXTPKGS_DIR)/$(DL_FILE) -C $(SRC_DIR)
+
+	#"or set the install location to /home/devel/rootfs
+	# make ARCH=arm CROSS_COMPILE=$(CROSS)- menuconfig  
+	#(BusyBox Settings->Installation Options->BusyBox installation prefix)
+	#OR
+	#you can set via CONFIG_PREFIX, for example:
+	    $(Q)cd $(SRC_DIR)/$(APP_DIR) && make ARCH=arm CONFIG_PREFIX=$(ROOTFS_DIR) CROSS_COMPILE=$(CROSS)- defconfig
+	    $(Q)cd $(SRC_DIR)/$(APP_DIR) && make ARCH=arm CONFIG_PREFIX=$(ROOTFS_DIR) CROSS_COMPILE=$(CROSS)- install
+
+	
+
+	#COMPILE and INSTALL
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make ARCH=arm CROSS_COMPILE=$(CROSS)- defconfig
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make ARCH=arm CROSS_COMPILE=$(CROSS)- install
+	
+	#$(Q)cp -rf $(SRC_DIR)/$(APP_DIR)/_install/bin/busybox $(ROOTFS_DIR)/bin/
+	#$(Q)ln -sf /bin/busybox $(ROOTFS_DIR)/linuxrc
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+

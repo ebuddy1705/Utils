@@ -1,0 +1,43 @@
+
+VER        = 3.1.10
+APP_DIR    = pciutils-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = cdb1e5a95ab7ac67349f10c8f77a6d3c
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+CFLAGS="-I$(ROOTFS_DIR)/usr/include"
+CPPFLAGS="-I$(ROOTFS_DIR)/usr/include"
+LDFLAGS="-L$(ROOTFS_DIR)/usr/lib"
+	
+	
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make SHARED=yes OPT="$(CFLAGS)" PREFIX=$(ROOTFS_DIR)/usr STRIP="" \
+		IDSDIR=$(ROOTFS_DIR)/usr/share/hwdata ZLIB=no CC=$(CROSS)-gcc
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -p lspci setpci $(ROOTFS_DIR)/bin
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -p update-pciids $(ROOTFS_DIR)/sbin
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -p lib/libpci.so.* $(ROOTFS_DIR)/lib/
+	$(Q)ln -svf ../../lib/libpci.so.$(VER) $(ROOTFS_DIR)/usr/lib/libpci.so
+	$(Q)ln -svf ../../lib/libpci.so.$(VER) $(ROOTFS_DIR)/usr/lib/libpci.so.3
+
+	# Install headers.
+	$(Q)mkdir -pv $(ROOTFS_DIR)/usr/include/pci
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -p lib/pci.h $(ROOTFS_DIR)/usr/include/pci
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -p lib/header.h $(ROOTFS_DIR)/usr/include/pci
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -p lib/config.h $(ROOTFS_DIR)/usr/include/pci
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -p lib/types.h $(ROOTFS_DIR)/usr/include/pci
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -p lib/libpci.pc $(ROOTFS_DIR)/usr/lib/pkgconfig
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

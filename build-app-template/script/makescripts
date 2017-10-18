@@ -1,0 +1,6 @@
+
+obj:= _clean
+
+_clean:
+	$(Q)-rm -rf $(INFO_DIR)/*
+	$(Q)-rm -rf $(SRC_DIR)/*

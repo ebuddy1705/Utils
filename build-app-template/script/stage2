@@ -1,0 +1,87 @@
+
+VER        = ipfire
+APP_DIR    = stage2
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	# Create directories
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/{bin,boot,etc/opt,etc/modprobe.d,home,lib/firmware/brcm,mnt,opt,run}
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/{media/{floppy,cdrom,usbkey},sbin,srv,var}
+	$(Q)-install -dv -m 0750 $(ROOTFS_DIR)/root
+	$(Q)-install -dv -m 1777 $(ROOTFS_DIR)/tmp $(ROOTFS_DIR)/var/tmp
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/usr/{,local/}{bin,include,lib{,/sse2},sbin,src}
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/usr/{,local/}share/{doc,info,locale,man}
+	$(Q)-mkdir -v  $(ROOTFS_DIR)/usr/{,local/}share/{misc,terminfo,xt_geoip,zoneinfo}
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/usr/{,local/}share/man/man{1..8}
+
+	# Symlink /var/run -> /run.
+	$(Q)ln -svf ../run $(ROOTFS_DIR)/var/run
+	
+	
+	# Config files
+	$(Q)-cp -rf $(CFG_DIR)/etc/* $(ROOTFS_DIR)/etc
+	$(Q)install -m 0644 $(CFG_DIR)/etc/sysctl.conf $(ROOTFS_DIR)/etc
+	$(Q)-touch $(ROOTFS_DIR)/etc/{fs,m}tab
+	$(Q)echo "$(NAME) - $(SLOGAN)" >  $(ROOTFS_DIR)/etc/issue
+	$(Q)echo "===============================" >> $(ROOTFS_DIR)/etc/issue
+	$(Q)echo "\n running on \s \r \m"          >> $(ROOTFS_DIR)/etc/issue
+
+	# Bash startup files
+	$(Q)-install --directory --mode=0755 --owner=root --group=root $(ROOTFS_DIR)/etc/profile.d
+	$(Q)-for i in $(CFG_DIR)/profile.d/*; do \
+	    [ -f $$i ] && cp $$i $(ROOTFS_DIR)/etc/profile.d; \
+	done
+	#$(Q)-chmod 755 $(ROOTFS_DIR)/etc/bashrc
+
+	# Move script to correct place.
+	$(Q)-mv -vf $(ROOTFS_DIR)/usr/local/bin/ovpn-ccd-convert $(ROOTFS_DIR)/usr/sbin/
+	$(Q)-mv -vf $(ROOTFS_DIR)/usr/local/bin/ovpn-collectd-convert $(ROOTFS_DIR)/usr/sbin/
+	
+	# Install firewall scripts.
+	$(Q)mkdir -pv $(ROOTFS_DIR)/usr/lib/firewall
+	$(Q)install -m 755 $(CFG_DIR)/firewall/rules.pl $(ROOTFS_DIR)/usr/lib/firewall/rules.pl
+	$(Q)install -m 644 $(CFG_DIR)/firewall/firewall-lib.pl $(ROOTFS_DIR)/usr/lib/firewall/firewall-lib.pl
+
+	# Nobody user
+	$(Q)-mkdir -p $(ROOTFS_DIR)/home/nobody
+	$(Q)-chown -R nobody:nobody $(ROOTFS_DIR)/home/nobody
+
+	# Create /var dirs and files
+	$(Q)-mkdir -v $(ROOTFS_DIR)/var/{lock,log,mail,spool,empty}
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/var/{opt,cache,lib/{misc,locate},local}
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/var/log/{counter,calamaris}
+	$(Q)-chown nobody.nobody $(ROOTFS_DIR)/var/log/calamaris
+	$(Q)-touch $(ROOTFS_DIR)/var/log/{btmp,lastlog,wtmp,net-traffic.log}
+	$(Q)-chgrp -v utmp $(ROOTFS_DIR)/var/log/lastlog
+	$(Q)-chmod -v 664 $(ROOTFS_DIR)/var/log/lastlog
+
+	# Permissions
+	$(Q)-chmod 0711 $(ROOTFS_DIR)/var/empty
+	
+	# A small hack to include /root to the iso but not all of it's files.
+	$(Q)touch $(ROOTFS_DIR)/root/ipfire
+
+	# License agreement
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/usr/share/doc/licenses/
+	#$(Q)cp -vf $(DIR_SRC)/doc/COPYING /usr/share/doc/licenses/GPLv3
+
+	# System release
+	$(Q)echo "IPFire 2.17 (i586) - core93" > $(ROOTFS_DIR)/etc/system-release
+	$(Q)echo "$(SYSTEM_RELEASE)" > $(ROOTFS_DIR)/etc/system-release-centic
+
+	# Pakfire
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/opt/pakfire/db/core
+	$(Q)echo "$(PAKFIRE_CORE)" > $(ROOTFS_DIR)/opt/pakfire/db/core/mine
+	
+	$(Q)$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+

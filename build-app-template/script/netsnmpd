@@ -1,0 +1,125 @@
+
+PROG       = netsnmpd
+PAK_VER    = 4
+DEPS       = ""
+
+
+VER        = 5.7.3
+APP_DIR    = net-snmp-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = d4a3459e1577d0efa8d96ca70a885e53
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i "s:copypersistentfiles \@PERLINSTALLTARGS\@ \@PYTHONINSTALLTARGS\@::" Makefile.in
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	./configure --prefix=/usr \
+		--host=$(CROSS) \
+		--target=$(CROSS) \
+		--build=x86_64-linux \
+		--with-cc=$(CROSS)-gcc \
+		--with-ar=$(CROSS)-ar \
+		--with-ld=$(CROSS)-ld \
+		--with-default-snmp-version="2" \
+		--with-sys-contact="root@" \
+		--with-sys-location="localhost" \
+		--with-logfile="/var/log/snmpd.log" \
+		--with-persistent-directory="/var/net-snmp" \
+		--libdir=/usr/lib \
+		--sysconfdir=/etc \
+		--disable-manuals \
+		--disable-embedded-perl
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && cp -rf sedscript.in sedscript
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+		
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl && sed -i "s%,'y'%,'n'%" Makefile.PL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl &&  PERL5LIB=$(ROOTFS_DIR)/usr/share/perl5:$(ROOTFS_DIR)/usr/lib/perl5 perl Makefile.PL -NET-SNMP-CONFIG="sh $(SRC_DIR)/$(APP_DIR)/net-snmp-config" -NET-SNMP-IN-SOURCE=true \
+						      PREFIX=$(ROOTFS_DIR)/usr \
+						    CC=$(CROSS)-gcc \
+						    AR=$(CROSS)-ar \
+						    LD=$(CROSS)-gcc  \
+						    FULL_AR=$(CROSS)-ar \
+						    LDDLFLAGS="-L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE/ -shared -fPIC -O2 -g -pipe -Wall -L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    OSNAME="$(PERL_TARGET)" \
+						    OSVERS="3.14" \
+						    SITELIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    SITEARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    VENDORARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    VENDORLIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_LIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_ARCHLIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    CCFLAGS="-D_REENTRANT -D_GNU_SOURCE -fno-strict-aliasing -pipe -fstack-protector -I$(ROOTFS_DIR)/usr/include" \
+						    OPTIMIZE="-O2 -g -pipe -Wall" \
+						    INC="" \
+						    PERL_INC="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE"
+						    
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl && sed -i 's/lib64/lib/g' Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl && make PREFIX=$(ROOTFS_DIR)/usr \
+						    CC=$(CROSS)-gcc \
+						    AR=$(CROSS)-ar \
+						    LD=$(CROSS)-gcc  \
+						    FULL_AR=$(CROSS)-ar \
+						    LDDLFLAGS="-L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE/ -shared -fPIC -O2 -g -pipe -Wall -L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    OSNAME="$(PERL_TARGET)" \
+						    OSVERS="3.14" \
+						    SITELIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    SITEARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    VENDORARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    VENDORLIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_LIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_ARCHLIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    CCFLAGS="-D_REENTRANT -D_GNU_SOURCE -fno-strict-aliasing -pipe -fstack-protector -I$(ROOTFS_DIR)/usr/include" \
+						    OPTIMIZE="-O2 -g -pipe -Wall" \
+						    INC="" \
+						    PERL_INC="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE"
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl && make PREFIX=$(ROOTFS_DIR)/usr \
+						    CC=$(CROSS)-gcc \
+						    AR=$(CROSS)-ar \
+						    LD=$(CROSS)-gcc  \
+						    FULL_AR=$(CROSS)-ar \
+						    LDDLFLAGS="-L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE/ -shared -fPIC -O2 -g -pipe -Wall -L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    OSNAME="$(PERL_TARGET)" \
+						    OSVERS="3.14" \
+						    SITELIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    SITEARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    VENDORARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    VENDORLIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_LIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_ARCHLIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    CCFLAGS="-D_REENTRANT -D_GNU_SOURCE -fno-strict-aliasing -pipe -fstack-protector -I$(ROOTFS_DIR)/usr/include" \
+						    OPTIMIZE="-O2 -g -pipe -Wall" \
+						    INC="" \
+						    PERL_INC="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    install 
+	
+	$(Q)install -v -m644 $(CFG_DIR)/netsnmpd/snmpd.conf $(ROOTFS_DIR)/etc/snmpd.conf
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/ipfire/backup/addons/includes
+	$(Q)install -v -m 644 $(CFG_DIR)/backup/includes/netsnmpd $(ROOTFS_DIR)/var/ipfire/backup/addons/includes/netsnmpd
+	$(Q)install -v -m755 $(CENTIC_SRC)/initscripts/init.d/netsnmpd $(ROOTFS_DIR)/etc/init.d/netsnmpd
+	$(Q)ln -sf ../init.d/netsnmpd $(ROOTFS_DIR)/etc/rc.d/rc3.d/S65netsnmpd
+	$(Q)ln -sf ../init.d/netsnmpd $(ROOTFS_DIR)/etc/rc.d/rc0.d/K02netsnmpd
+	$(Q)ln -sf ../init.d/netsnmpd $(ROOTFS_DIR)/etc/rc.d/rc6.d/K02netsnmpd
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

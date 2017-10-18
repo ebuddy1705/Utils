@@ -1,0 +1,66 @@
+
+VER        = 2.9.7.0
+APP_DIR    = snort-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = c2a45bc56441ee9456478f219dd8d1e2
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cp -rf $(PATCHES_DIR)/snort/* $(SRC_DIR)/$(APP_DIR)
+	
+	#CONFIGURE
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include -fPIC -O2 -g" \
+		CPPFLAGS="-I$(ROOTFS_DIR)/usr/include -fPIC -O2 -g" \
+		LIBS=" -Wl,-rpath-link -Wl,${ROOTFS_DIR}/lib -Wl,-rpath-link -Wl,${ROOTFS_DIR}/usr/lib -Wl,-rpath-link -Wl,${ROOTFS_DIR}/usr/local/lib" \
+		LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -ldaq -ldnet -lpcap" \
+		PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+		ac_cv_func_malloc_0_nonnull=yes ac_cv_func_realloc_0_nonnull=yes \
+		./configure --prefix=/usr \
+		--host=$(CROSS) CC=$(CROSS)-gcc \
+		--sysconfdir=/etc/snort \
+		--target=armv7 \
+		--enable-linux-smp-stats \
+		--enable-gre --enable-mpls \
+		--enable-targetbased \
+		--enable-ppm \
+		--enable-non-ether-decoders \
+		--enable-perfprofiling \
+		--enable-active-response \
+		--enable-normalizer \
+		--enable-reload \
+		--enable-react \
+		--enable-flexresp3
+
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+
+	$(Q)mv $(ROOTFS_DIR)/usr/bin/snort $(ROOTFS_DIR)/usr/sbin/
+	$(Q)-mkdir -p $(ROOTFS_DIR)/etc/snort/rules
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -m 0644  \
+		etc/reference.config etc/classification.config \
+		$(ROOTFS_DIR)/etc/snort/rules
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -m 0644 etc/unicode.map \
+		$(ROOTFS_DIR)/etc/snort
+
+	$(Q)install -m 0644 $(CFG_DIR)/snort/snort.conf $(ROOTFS_DIR)/etc/snort
+	$(Q)cp $(ROOTFS_DIR)/etc/snort/snort.conf $(ROOTFS_DIR)/etc/snort/snort.conf.template
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/log/snort
+
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

@@ -1,0 +1,77 @@
+
+VER        = 208
+APP_DIR    = udev-lfs-$(VER)-1
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+md5_$(DL_FILE) = 67a5339e7ef1fa08f5db8315a5ea69e7
+
+obj:= _download_$(DL_FILE)
+
+DL_FILE    = systemd-$(VER).tar.xz
+md5_$(DL_FILE) = df64550d92afbffb4f67a434193ee165
+
+obj+= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)rm -rf $(SRC_DIR)/systemd-$(VER)
+	$(Q)tar axf $(DL_DIR)/systemd-$(VER).tar.xz -C $(SRC_DIR)
+	$(Q)tar -jxf $(DL_DIR)/udev-lfs-$(VER)-1.tar.bz2 -C $(SRC_DIR)/systemd-$(VER)
+	
+	$(Q)-cd $(SRC_DIR)/systemd-$(VER);\
+	patch -Np1 -i $(PATCHES_DIR)/udev-208_remove_systemd_log.patch
+	#patch -Np1 -i $(PATCHES_DIR)/systemd-208.patch
+	
+	$(Q)-cd $(SRC_DIR)/systemd-$(VER)/$(APP_DIR);\
+	patch -Np1 -i $(PATCHES_DIR)/udev-lfs-208-1.patch
+	
+	#$(Q)cd $(SRC_DIR)/systemd-$(VER)/$(APP_DIR) && sed -i "s/HANDLE_AT 1/HANDLE_AT 0/g" cfg.h
+	$(Q)-rm -rf $(ROOTFS_DIR)/lib/udev/devices
+	$(Q)-install -dv $(ROOTFS_DIR)/lib/firmware
+	
+	$(Q)cd $(SRC_DIR)/systemd-$(VER) && make -f udev-lfs-$(VER)-1/Makefile.lfs VB=$(CROSS)- \
+	CFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -lz -luuid"
+	
+	$(Q)cd $(SRC_DIR)/systemd-$(VER) && make -f udev-lfs-$(VER)-1/Makefile.lfs VB=$(CROSS)- \
+	DESTDIR=$(ROOTFS_DIR) install
+
+	# Make some compat symlinks
+	$(Q)-ln -sf /lib/udev/udevd $(ROOTFS_DIR)/sbin/udevd
+	$(Q)-ln -sf /sbin/udevadm $(ROOTFS_DIR)/bin/udevadm
+
+	# Disable net generator rule. This does not work with the setup.
+	$(Q)-rm -f $(ROOTFS_DIR)/lib/udev/rules.d/75-persistent-net-generator.rules
+	$(Q)-rm -f $(ROOTFS_DIR)/lib/udev/rules.d/80-net-name-slot.rules
+
+	# Blacklist some modules
+	$(Q)-mkdir -p $(ROOTFS_DIR)/etc/modprobe.d
+	$(Q)-cp -vf $(CFG_DIR)/udev/blacklist.conf $(ROOTFS_DIR)/etc/modprobe.d/blacklist.conf
+
+	# Install config file
+	$(Q)install -v -m 644 $(CFG_DIR)/udev/udev.conf $(ROOTFS_DIR)/etc/udev/
+
+	# Install alsa rules.
+	$(Q)install -v -m 644 $(CFG_DIR)/udev/25-alsa.rules $(ROOTFS_DIR)/lib/udev/rules.d
+
+	# Install network rules.
+	$(Q)install -v -m 755 $(CFG_DIR)/udev/network-hotplug-rename $(ROOTFS_DIR)/lib/udev/network-hotplug-rename
+	$(Q)install -v -m 644 $(CFG_DIR)/udev/60-net.rules $(ROOTFS_DIR)/lib/udev/rules.d
+
+	# Install hwrng rules.
+	$(Q)install -v -m 644 $(CFG_DIR)/udev/90-hwrng.rules $(ROOTFS_DIR)/lib/udev/rules.d
+
+	# Install codel rules.
+	$(Q)install -v -m 644 $(CFG_DIR)/udev/99-codel.rules $(ROOTFS_DIR)/lib/udev/rules.d
+	$(Q)install -m 755 $(CFG_DIR)/udev/enable_codel $(ROOTFS_DIR)/lib/udev/enable_codel
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+	$(Q)-rm -f $(INFO_DIR)/systemd-$(VER)

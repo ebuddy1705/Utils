@@ -1,0 +1,51 @@
+	
+VER        = 4.3
+APP_DIR    = bash-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 81348932d5da294953e15d4814c74dd1
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -e "s/filename, RTLD_LAZY/filename, RTLD_NOW/" \
+		-i builtins/enable.def
+
+	$(Q)for i in $$(seq 1 30); do \
+		cd $(SRC_DIR)/$(APP_DIR) && patch -Np0 < $(PATCHES_DIR)/bash/bash43-$$(printf "%03d" "$${i}") || exit 1; \
+	done
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && patch -Np1 < $(PATCHES_DIR)/bash/bash-4.0-paths-1.patch
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && patch -Np1 < $(PATCHES_DIR)/bash/bash-4.0-profile-1.patch
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && patch -Np1 < $(PATCHES_DIR)/bash/bash-3.2-ssh_source_bash.patch
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && ./configure --prefix=/usr --bindir=/bin \
+						  --host=$(CROSS) CC=$(CROSS)-gcc \
+						  --with-installed-readline \
+						  --without-bash-malloc
+						  
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+
+	#change default sh => bash shell
+	$(Q)mv $(ROOTFS_DIR)/bin/sh $(ROOTFS_DIR)/bin/sh_
+	$(Q)mv $(ROOTFS_DIR)/bin/ash $(ROOTFS_DIR)/bin/ash_
+	$(Q)ln -sf /bin/bash $(ROOTFS_DIR)/bin/sh
+	$(Q)ln -sf /bin/bash $(ROOTFS_DIR)/bin/ash
+
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

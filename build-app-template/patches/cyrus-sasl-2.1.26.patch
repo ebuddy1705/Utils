@@ -1,0 +1,33 @@
+diff -Naur cyrus-sasl-2.1.26/include/Makefile.in cyrus-sasl-2.1.26/include/Makefile.in
+--- cyrus-sasl-2.1.26/include/Makefile.in	2012-11-07 02:21:38.000000000 +0700
++++ cyrus-sasl-2.1.26/include/Makefile.in	2015-11-24 07:42:16.893196279 +0700
+@@ -113,12 +113,12 @@
+ depcomp = $(SHELL) $(top_srcdir)/config/depcomp
+ am__depfiles_maybe = depfiles
+ am__mv = mv -f
+-COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++COMPILE = gcc $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+ 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+ LTCOMPILE = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+-	--mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
++	--mode=compile gcc $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+ 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+-CCLD = $(CC)
++CCLD = gcc
+ LINK = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link \
+ 	$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+ SOURCES = $(makemd5_SOURCES)
+@@ -157,11 +157,11 @@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+-CC = @CC@
++CC = gcc
+ CCDEPMODE = @CCDEPMODE@
+ CFLAGS = @CFLAGS@
+ CMU_LIB_SUBDIR = @CMU_LIB_SUBDIR@
+-CPP = @CPP@
++CPP = g++
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+ DEFS = @DEFS@

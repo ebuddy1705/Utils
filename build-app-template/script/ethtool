@@ -1,0 +1,27 @@
+VER        = 3.16
+APP_DIR    = ethtool-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.xz
+md5_$(APP_DIR).tar.xz = 7eee202accb86104adc8463a36a1a468
+
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR); ./configure --build=i686 \
+	      --target=$(CROSS) \
+	      --host=$(CROSS) \
+	      --prefix=/usr 
+	$(Q)$(MAKE) -C $(SRC_DIR)/$(APP_DIR) clean all
+	$(Q)$(MAKE) -C $(SRC_DIR)/$(APP_DIR) DESTDIR=$(ROOTFS_DIR) install
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean: 
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+	

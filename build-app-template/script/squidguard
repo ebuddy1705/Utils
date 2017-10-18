@@ -1,0 +1,79 @@
+
+
+VER        = 1.4.1
+APP_DIR    = squidGuard-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 9ae7b62a63631bb2dd1f474cf2bbe4dc
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) $(ROOTFS_DIR) ===============
+	
+	
+	
+	
+
+	#PATCH
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/squidguard-1.4-squid-helper-protocol.patch ;\
+	patch -Nru < $(PATCHES_DIR)/squidguard-1.4-cross-compile.patch
+	
+	#CONFIGURE
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && db_ok_version=yes \
+	dbg3_ok_version=yes \
+	./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc \
+	--datadir=/usr/share \
+	--sysconfdir=/etc --localstatedir=/var --infodir=/usr/info --mandir=/usr/man  \
+	--with-sg-config=/var/ipfire/urlfilter/squidGuard.conf \
+	--with-sg-logdir=/var/log/squidGuard --with-sg-dbhome=/var/lib/squidguard \
+	--with-db=$(ROOTFS_DIR)/usr --with-db-inc=$(ROOTFS_DIR)/usr/include --with-db-lib=$(ROOTFS_DIR)/usr/lib
+	
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	
+	# URL-Filter
+	$(Q)-mkdir $(ROOTFS_DIR)/etc/squidGuard $(ROOTFS_DIR)/var/urlrepo
+	$(Q)cp -f  $(CFG_DIR)/urlfilter/autoupdate.urls $(ROOTFS_DIR)/var/ipfire/urlfilter/autoupdate/autoupdate.urls
+	$(Q)ln -fs /bin/false $(ROOTFS_DIR)/var/ipfire/urlfilter/autoupdate/cron.daily
+	$(Q)ln -fs /bin/false $(ROOTFS_DIR)/var/ipfire/urlfilter/autoupdate/cron.weekly
+	$(Q)ln -fs /bin/false $(ROOTFS_DIR)/var/ipfire/urlfilter/autoupdate/cron.monthly
+	$(Q)cp -f  $(CFG_DIR)/urlfilter/squidGuard.conf $(ROOTFS_DIR)/var/ipfire/urlfilter/squidGuard.conf
+	$(Q)ln -fs /var/ipfire/urlfilter/squidGuard.conf $(ROOTFS_DIR)/etc/squidGuard/squidGuard.conf
+	$(Q)cp -f  $(CFG_DIR)/urlfilter/prebuild.pl $(ROOTFS_DIR)/var/ipfire/urlfilter/bin/prebuild.pl
+	$(Q)chmod 755 $(ROOTFS_DIR)/var/ipfire/urlfilter/bin/prebuild.pl
+	$(Q)cp -f  $(CFG_DIR)/urlfilter/autoupdate.pl $(ROOTFS_DIR)/var/ipfire/urlfilter/bin/autoupdate.pl
+	$(Q)chmod 755 $(ROOTFS_DIR)/var/ipfire/urlfilter/bin/autoupdate.pl
+	$(Q)echo "1.7.1" > $(ROOTFS_DIR)/var/ipfire/urlfilter/version
+	
+	# Wrapper
+	$(Q)cp -f  $(CFG_DIR)/urlfilter/redirect_wrapper $(ROOTFS_DIR)/usr/sbin
+	$(Q)chmod 755 $(ROOTFS_DIR)/usr/sbin/redirect_wrapper
+
+	$(Q)tar --no-same-owner -xzf $(CFG_DIR)/urlfilter/blacklists.tar.gz -C $(ROOTFS_DIR)/var/ipfire/urlfilter
+	$(Q)perl $(CFG_DIR)/urlfilter/makeconf.pl
+	$(Q)touch $(ROOTFS_DIR)/var/ipfire/urlfilter/settings
+	$(Q)-chown -R nobody:nobody $(ROOTFS_DIR)/var/ipfire/urlfilter
+	$(Q)-chmod 755 $(ROOTFS_DIR)/srv/web/ipfire/html/images/urlfilter
+	$(Q)-chmod 644 $(ROOTFS_DIR)/srv/web/ipfire/html/images/urlfilter/*
+	$(Q)-chown -R nobody:nobody $(ROOTFS_DIR)/var/urlrepo
+	$(Q)-chown -R squid:squid $(ROOTFS_DIR)/var/log/squidGuard
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+	

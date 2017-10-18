@@ -1,0 +1,358 @@
+diff -Naur fcron-3.2.0/Makefile.in fcron-3.2.0/Makefile.in
+--- fcron-3.2.0/Makefile.in	2014-06-29 23:17:17.000000000 +0700
++++ fcron-3.2.0/Makefile.in	2015-11-28 10:18:48.427129000 +0700
+@@ -53,7 +53,7 @@
+ ANSWERALL	:= @ANSWERALL@
+ USEPAM		:= @USEPAM@
+ FCRONDYN	:= @FCRONDYN@
+-SYSTEMD_DIR     := @SYSTEMD_DIR@
++SYSTEMD_DIR     := @prefix@/lib/systemd/system
+ 
+ # Options
+ #	-DDEBUG		even more verbose
+@@ -137,9 +137,9 @@
+ documentation:
+ 	$(MAKE) -C doc doc-if-none
+ 
+-install: install-staged strip perms 
++install: install-staged strip 
+ ifeq ($(BOOTINSTALL), 1)
+-	$(SRCDIR)/script/boot-install "$(INSTALL) -o $(ROOTNAME)" $(DESTSBIN) $(DEBUG) $(FCRONTABS) $(ANSWERALL) $(SRCDIR)
++	$(SRCDIR)/script/boot-install "$(INSTALL) -o $(ROOTNAME)" $(DESTSBIN) $(DEBUG) $(FCRONTABS) $(ANSWERALL) $(SRCDIR) $(ROOTDIR)
+ endif
+ ifneq ($(SYSTEMD_DIR), no)
+ 	if test ! -d $(DESTDIR)$(SYSTEMD_DIR); then $(INSTALL) -m 755 -d $(DESTDIR)$(SYSTEMD_DIR) ; fi
+@@ -151,7 +151,7 @@
+ # needed by boot-install script :
+ 	echo `fcron -V 2>&1 | grep "^fcron "` > PREVIOUS_VERSION && chmod a+rw PREVIOUS_VERSION
+ 
+-	$(SRCDIR)/script/user-group $(USERNAME) $(GROUPNAME) $(ANSWERALL) $(SRCDIR)
++	#$(SRCDIR)/script/user-group $(USERNAME) $(GROUPNAME) $(ANSWERALL) $(SRCDIR)
+ 
+ # check if the directories we use exist, and if not, create them
+ 	if test ! -d $(DESTDIR)$(DESTSBIN); then $(INSTALL) -m 755 -d $(DESTDIR)$(DESTSBIN) ; fi
+@@ -234,11 +234,11 @@
+ # strip executables
+ strip: install-staged
+ ifneq ($(DEBUG), 1)
+-	strip $(DESTDIR)$(DESTSBIN)/fcron
+-	strip $(DESTDIR)$(DESTBIN)/fcrontab
+-	strip $(DESTDIR)$(DESTBIN)/fcronsighup
++	$(STRIP) $(DESTDIR)$(DESTSBIN)/fcron
++	$(STRIP) $(DESTDIR)$(DESTBIN)/fcrontab
++	$(STRIP) $(DESTDIR)$(DESTBIN)/fcronsighup
+ ifeq ($(FCRONDYN), 1)
+-	strip $(DESTDIR)$(DESTBIN)/fcrondyn
++	$(STRIP) $(DESTDIR)$(DESTBIN)/fcrondyn
+ endif
+ endif
+ 
+diff -Naur fcron-3.2.0/script/boot-install fcron-3.2.0/script/boot-install
+--- fcron-3.2.0/script/boot-install	2014-06-29 23:17:18.000000000 +0700
++++ fcron-3.2.0/script/boot-install	2015-11-28 10:16:20.082212000 +0700
+@@ -33,11 +33,12 @@
+ FCRONTABS=$4
+ ANSWER=$5
+ SRCDIR=$6
++ROOTDIR=$7
+ 
+ if test $DEBUG -eq 1; then
+-    STARTCMD="fcron -b -d"
++    STARTCMD=""
+ else
+-    STARTCMD="fcron -b"
++    STARTCMD=""
+ fi    
+ 
+ if test `uname -s` = "FreeBSD"; then
+@@ -85,16 +86,16 @@
+ if test $IS_FREEBSD -eq 1; then
+   echo "  /usr/local/etc/rc.d/fcron.sh"
+ fi
+-if test -d /etc/init.d/; then
+-  echo "  /etc/init.d/fcron"
+-elif test -d /etc/rc.d/init.d/; then
+-  echo "  /etc/rc.d/init.d/fcron"
++if test -d $ROOTDIR/etc/init.d/; then
++  echo "  $ROOTDIR/etc/init.d/fcron"
++elif test -d $ROOTDIR/etc/rc.d/init.d/; then
++  echo "  $ROOTDIR/etc/rc.d/init.d/fcron"
+ fi
+-if test -f /etc/rc.d/rc.local; then
+-  echo "  /etc/rc.d/rc.local"
++if test -f $ROOTDIR/etc/rc.d/rc.local; then
++  echo "  $ROOTDIR/etc/rc.d/rc.local"
+ fi
+-if test -f /etc/rc.local; then
+-  echo "  /etc/rc.local"
++if test -f $ROOTDIR/etc/rc.local; then
++  echo "  $ROOTDIR/etc/rc.local"
+ fi
+ echo
+ 
+@@ -104,7 +105,7 @@
+ INSTALLED=0
+ 
+ if test $IS_FREEBSD -eq 1; then 
+-  if test -x /usr/local/etc/rc.d/fcron.sh; then
++  if test -x $ROOTDIR/usr/local/etc/rc.d/fcron.sh; then
+     echo "Fcron is already in /usr/local/etc/rc.d/."
+     INSTALLED=1
+   else
+@@ -122,12 +123,12 @@
+       INSTALL="n"
+     fi
+     if test \( -z "$INSTALL" \) -o \( "$INSTALL" = "y" \); then
+-      cp -f script/fcron.sh /usr/local/etc/rc.d/
++      cp -f script/fcron.sh $ROOTDIR/usr/local/etc/rc.d/
+       if test $DEBUG -eq 1; then
+-        cat /usr/local/etc/rc.d/fcron.sh | sed 's: -b: -b -d:' > /usr/local/etc/rc.d/fcron.sh2
+-        mv -f /usr/local/etc/rc.d/fcron.sh2 /usr/local/etc/rc.d/fcron.sh
++        cat $ROOTDIR/usr/local/etc/rc.d/fcron.sh | sed 's: -b: -b -d:' > $ROOTDIR/usr/local/etc/rc.d/fcron.sh2
++        mv -f $ROOTDIR/usr/local/etc/rc.d/fcron.sh2 $ROOTDIR/usr/local/etc/rc.d/fcron.sh
+       fi
+-      chmod +x /usr/local/etc/rc.d/fcron.sh
++      chmod +x $ROOTDIR/usr/local/etc/rc.d/fcron.sh
+       INSTALLED=1
+     else
+       INSTALLED=0
+@@ -137,18 +138,14 @@
+ 
+ 
+ INSTALL="nothing"
+-ROOTDIR=""
+-if test -d /etc/init.d/; then
+-    ROOTDIR="/etc"
+-elif test -d /etc/rc.d/init.d/; then
+-    ROOTDIR="/etc/rc.d"
+-fi
++
++
+ if test \( ! "$INSTALLED" -eq 1 \) -a \( "$ROOTDIR" != "" \); then
+   if test $ANSWER -eq 2; then
+     while test \( ! -z "$INSTALL" \) -a \( "$INSTALL" != "y" \) -a \( "$INSTALL" != "n" \);
+     do
+-      echo "Would you like to add fcron in the directory $ROOTDIR/init.d/ and in runlevel 2, 3, 4 and 5"
+-      echo "(directories $ROOTDIR/rc{2,3,4,5}.d/) ?"
++      echo "Would you like to add fcron in the directory $ROOTDIR/etc/rc.d/init.d/ and in runlevel 2, 3, 4 and 5"
++      echo "(directories $ROOTDIR/etc/rc.d/rc{2,3,4,5}.d/) ?"
+       echo -n "Please answer with 'y' or 'n' (default: 'y'): "
+       read INSTALL NOTHING
+     done
+@@ -159,22 +156,22 @@
+     INSTALL="n"
+   fi
+   if test \( -z "$INSTALL" \) -o \( "$INSTALL" = "y" \); then
+-    $INSPROG -c -m 755 script/sysVinit-launcher $ROOTDIR/init.d/fcron
++    $INSPROG -c -m 755 script/sysVinit-launcher $ROOTDIR/etc/rc.d/init.d/fcron
+     if test $DEBUG -eq 1; then
+-      cat $ROOTDIR/init.d/fcron | sed 's: -b: -b -d:' >$ROOTDIR/init.d/fcron2
+-      mv -f $ROOTDIR/init.d/fcron2 $ROOTDIR/init.d/fcron
+-      chmod +x $ROOTDIR/init.d/fcron
++      cat $ROOTDIR/etc/rc.d/init.d/fcron | sed 's: -b: -b -d:' > $ROOTDIR/etc/rc.d/init.d/fcron2
++      mv -f $ROOTDIR/etc/rc.d/init.d/fcron2 $ROOTDIR/init.d/fcron
++      chmod +x $ROOTDIR/etc/rc.d/init.d/fcron
+     fi
+-    chmod +x $ROOTDIR/init.d/fcron
++    chmod +x $ROOTDIR/etc/rc.d/init.d/fcron
+ 
+     for j in 2 3 4 5
+     do
+-    cd $ROOTDIR/rc$j.d/ ; ln -f -s ../init.d/fcron S40fcron
++    cd $ROOTDIR/etc/rc.d/rc$j.d/ ; ln -f -s ../init.d/fcron S40fcron
+     done
+ 
+     for j in 0 6
+     do
+-    cd $ROOTDIR/rc$j.d/ ; ln -f -s ../init.d/fcron K60fcron
++    cd $ROOTDIR/etc/rc.d/rc$j.d/ ; ln -f -s ../init.d/fcron K60fcron
+     done
+     cd $startdir
+ 
+@@ -187,10 +184,10 @@
+ fi
+ 
+ INSTALL="nothing"
+-if test \( ! "$INSTALLED" -eq 1 \) -a \( -f /etc/rc.d/rc.local \); then
++if test \( ! "$INSTALLED" -eq 1 \) -a \( -f $ROOTDIR/etc/rc.d/rc.local \); then
+   # Slackware
+-  if ! cat /etc/rc.d/rc.local | grep "$STARTCMD"; then
+-    if cat /etc/rc.d/rc.local | grep fcron; then	
++  if ! cat $ROOTDIR/etc/rc.d/rc.local | grep "$STARTCMD"; then
++    if cat $ROOTDIR/etc/rc.d/rc.local | grep fcron; then	
+       echo "Fcron seems to be in /etc/rc.d/rc.local, but not with the appropriate options :"
+       echo "you should probably correct this file in order to run fcron with $STARTCMD."
+       INSTALLED=1
+@@ -198,7 +195,7 @@
+       if test $ANSWER -eq 2; then
+         while test \( ! -z "$INSTALL" \) -a \( "$INSTALL" != "y" \) -a \( "$INSTALL" != "n" \);
+         do
+-          echo "Would you like to add $STARTCMD in the file /etc/rc.d/rc.local ?"
++          echo "Would you like to add $STARTCMD in the file $ROOTDIR/etc/rc.d/rc.local ?"
+           echo -n "Please answer with 'y' or 'n' (default: 'y'): "
+           read INSTALL NOTHING
+         done
+@@ -209,14 +206,14 @@
+         INSTALL="n"
+       fi
+       if test \( -z "$INSTALL" \) -o \( "$INSTALL" = "y" \); then
+-        echo $STARTCMD >> /etc/rc.d/rc.local
++        echo $STARTCMD >> $ROOTDIR/etc/rc.d/rc.local
+         INSTALLED=1
+       else
+         INSTALLED=0
+       fi
+     fi
+   else
+-    echo "Fcron is already in /etc/rc.d/rc.local."
++    echo "Fcron is already in $ROOTDIR/etc/rc.d/rc.local."
+     INSTALLED=1
+   fi
+ fi 
+@@ -224,9 +221,9 @@
+ 
+ INSTALL="nothing"
+ 
+-if test \( ! "$INSTALLED" -eq 1 \) -a \( -f /etc/rc.local \) ; then
+-  if ! cat /etc/rc.local | grep "$STARTCMD"; then
+-    if cat /etc/rc.local | grep fcron; then	
++if test \( ! "$INSTALLED" -eq 1 \) -a \( -f $ROOTDIR/etc/rc.local \) ; then
++  if ! cat $ROOTDIR/etc/rc.local | grep "$STARTCMD"; then
++    if cat $ROOTDIR/etc/rc.local | grep fcron; then	
+       echo "Fcron seems to be in /etc/rc.local, but not with the appropriate options :"
+       echo "you should probably correct this file in order to run fcron with $STARTCMD."
+       INSTALLED=1
+@@ -234,7 +231,7 @@
+       if test $ANSWER -eq 2; then
+         while test \( ! -z "$INSTALL" \) -a \( "$INSTALL" != "y" \) -a \( "$INSTALL" != "n" \);
+         do
+-          echo "Would you like to add $STARTCMD in the file /etc/rc.local ?"
++          echo "Would you like to add $STARTCMD in the file $ROOTDIR/etc/rc.local ?"
+           echo -n "Please answer with 'y' or 'n' (default: 'y'): "
+           read INSTALL NOTHING
+         done
+@@ -245,14 +242,14 @@
+         INSTALL="n"
+       fi
+       if test \( -z "$INSTALL" \) -o \( "$INSTALL" = "y" \); then
+-        echo $STARTCMD >> /etc/rc.local
++        echo $STARTCMD >> $ROOTDIR/etc/rc.local
+         INSTALLED=1
+       else
+         INSTALLED=0
+       fi
+     fi
+   else
+-    echo "Fcron is already in /etc/rc.local."
++    echo "Fcron is already in $ROOTDIR/etc/rc.local."
+     INSTALLED=1
+   fi
+ fi
+@@ -266,10 +263,10 @@
+ 
+ 
+ if PID=`pidof fcron`; then
+-  KILL="kill -TERM $PID"
+-  KILLSTR="kill -TERM \`pidof fcron\`"
++  KILL="echo kill -TERM $PID"
++  KILLSTR="echo kill -TERM \`pidof fcron\`"
+ else
+-  KILL="killall -TERM fcron"
++  KILL="echo killall -TERM fcron"
+   KILLSTR=$KILL
+   COMMENT="WARNING : this command may not have the desired effect on non-Linux systems.\n"
+   PID="test -z on PID is not need in this case"
+@@ -280,43 +277,6 @@
+   # we stop fcron like this (not using "fcron restart") because
+   # an old version of fcron may not stop correctly otherwise.
+   echo 
+-  echo "You should now stop the old version of fcron and start the new one."
+-  RESTART="nothing"
+-  COMMENT=""
+-  if test -z "$PID"; then
+-    echo "Fcron is not running."
+-    KILL=""
+-    COMMENT=""
+-  fi
+-  if test "$SYSV" -eq 1; then
+-    CMD="$ROOTDIR/init.d/fcron start"
+-  else
+-    CMD=$STARTCMD
+-  fi
+-  if test $ANSWER -eq 2; then
+-    while test \( ! -z "$RESTART" \) -a \( "$RESTART" != "y" \) -a \( "$RESTART" != "n" \);
+-    do
+-      if test ! -z "$KILL"; then
+-        echo "Would you like to do it with a '"$KILLSTR"' ?"
+-        echo -n $COMMENT
+-        echo "followed by a '"$CMD"' ?"
+-      else
+-        echo "Would you like to start it by '"$CMD"' ?"
+-      fi
+-        echo -n "Please answer with 'y' or 'n' (default: 'y'): "
+-        read RESTART NOTHING
+-    done
+-  # automatic answer given by configure script (option --with-answer-all)
+-  elif test $ANSWER -eq 1; then
+-    RESTART="y"
+-  else
+-    RESTART="n"
+-  fi
+-  if test \( -z "$RESTART" \) -o \( "$RESTART" = "y" \); then
+-    $KILL
+-    sleep 2   # wait for fcron to stop
+-    $CMD
+-  fi
+ 
+ else # test $NEED_UPDATE -eq 0
+ 
+@@ -324,30 +284,7 @@
+   echo "You should now stop the old version fcron."
+   STOP="nothing"
+   COMMENT=""
+-  if test -z "$PID"; then
+-    echo "Fcron is not running."
+-    echo "You may start it after having updated the fcrontabs."
+-    STOPPED=1
+-  else
+-    if test $ANSWER -eq 2; then
+-      while test \( ! -z "$STOP" \) -a \( "$STOP" != "y" \) -a \( "$STOP" != "n" \);
+-      do
+-        echo "Would you like to do it with a '"$KILLSTR"'"
+-        echo -n $COMMENT
+-        echo -n "Please answer with 'y' or 'n' (default: 'y'): "
+-        read STOP NOTHING
+-      done
+-      # automatic answer given by configure script (option --with-answer-all)
+-    elif test $ANSWER -eq 1; then
+-      STOP="y"
+-    else
+-      STOP="n"
+-    fi
+-    if test \( -z "$STOP" \) -o \( "$STOP" = "y" \); then
+-      $KILL
+-      STOPPED=1
+-    fi
+-  fi
++ 
+ 
+   echo
+   if test "$STOPPED" = "1"; then
+@@ -395,7 +332,7 @@
+   START="nothing"
+   COMMENT=""
+   if test "$SYSV" -eq 1; then
+-    CMD="$ROOTDIR/init.d/fcron start"
++    CMD="$ROOTDIR/etc/rc.d/init.d/fcron start"
+   else
+     CMD=$STARTCMD
+   fi
+@@ -413,7 +350,7 @@
+     START="n"
+   fi
+   if test \( -z "$START" \) -o \( "$START" = "y" \); then
+-    $CMD
++    echo "$CMD"
+   fi
+ 
+ fi

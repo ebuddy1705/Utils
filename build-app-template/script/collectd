@@ -1,0 +1,119 @@
+
+PROG       = collectd
+DEPS       = ""
+CFLAGS    += -Wno-error=deprecated-declarations
+
+
+VER        = 4.10.9
+APP_DIR    = collectd-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.bz2
+md5_$(DL_FILE) = 980dd3387508f9ad209df04a6f7a126c
+
+obj:=  _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+ROOTFS_DIR_=$(ROOTFS_DIR)
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+
+	#PATCH
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0001-src-utils_mount.h-Add-stdio.h.patch
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0002-Don-t-notify-continuously-when-MySQL-slave-SQL-threa.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0003-curl_xml.c-avoid-using-uninitalized-variable-in-erro.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0004-interface.c-FreeBSD-10-support.patch                                 
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0005-Revert-curl_xml.c-avoid-using-uninitalized-variable-.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0006-network-set_thread_cbs-so-we-initialize-the-right-th.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0007-apache-plugin-Call-curl_global_init-from-the-init-fu.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0008-network-comment-libgcrypt-initalization-process.patch                
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0009-Call-curl_global_init-in-_init-of-plugins-using-curl.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0010-indent-wh_init-to-be-consistent-with-the-rest-of-the.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0011-Configparser-when-we-alocate-an-empty-list-we-also-n.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0012-don-t-assume-pkg-config-is-in-PATH.patch                             
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0013-add-missing-backticks-which-broke-the-build.patch                    
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0014-snmp-free-snmp_pdu-struct-allocated-by-snmp_pdu_crea.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0015-curl_xml-plugin-Fixed-tautological-pointer-compariso.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0016-Add-support-for-OpenVPN-2.3.0-status-files.patch                     
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0017-openvpn-plugin-Don-t-signal-an-error-when-no-clients.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0018-openvpn-Remove-boguous-file-handler-check.patch                      
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0019-openvpn-Ignore-not-fully-established-connections.patch               
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0020-openvpn-Make-read-functions-robust-like-in-8516f9abb.patch           
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0021-openvpn-Fix-copy-and-paste-error.patch                               
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/0022-openvpn-Change-data-type-from-COUNTER-to-DERIVE.patch                
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR)  && patch -Np1 -i $(PATCHES_DIR)/collectd/silence-openvpn-errors.patch                                             
+	
+	
+	#CONFIGURE
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include -Wno-error=deprecated-declarations" \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include" \
+	LDFLAGS="-L$(ROOTFS_DIR)/lib -L$(ROOTFS_DIR)/usr/lib" \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	ac_cv_lib_rrd_th_rrd_update_r=yes \
+	./configure \
+	--host=$(CROSS) CC=$(CROSS)-gcc LD=$(CROSS)-ld \
+	--prefix=/usr \
+	--localstatedir=/var \
+	--with-fp-layout=nothing \
+	ac_cv_lib_rrd_th_rrd_update_r=yes \
+	--disable-{apple_sensors,csv,ipvs,mbmon,memcached,mysql} \
+	--disable-{netlink,nginx,nut,perl,serial,snmp,tape,vserver,xmms,pinba} \
+	--enable-{apcups,battery,cpu{,freq},df,disk,dns,email,entropy,exec,hddtemp} \
+	--enable-{interface,irq,load,logfile,memory,multimeter} \
+	--enable-{network,nfs,ntpd,processes,swap,syslog} \
+	--enable-{tcpconns,unixsock,users} \
+	--enable-{iptables,rrdtool,ping} \
+	--with-librrd=$(ROOTFS_DIR)/usr \
+	--with-libiptc=$(ROOTFS_DIR)
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's/libltdl src bindings/libltdl src/g' Makefile 
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's/subdirs =  libltdl/subdirs =/g' Makefile
+	
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make  CC=$(CROSS)-gcc LD=$(CROSS)-ld  DESTDIR=$(ROOTFS_DIR_) install
+	
+	$(Q)cp -f -vf $(CFG_DIR)/collectd/collectd.* $(ROOTFS_DIR_)/etc/
+	$(Q)mv $(ROOTFS_DIR_)/etc/collectd.vpn $(ROOTFS_DIR_)/var/ipfire/ovpn/collectd.vpn
+	$(Q)-chown nobody.nobody $(ROOTFS_DIR_)/var/ipfire/ovpn/collectd.vpn
+	$(Q)-ln -f -s /var/ipfire/ovpn/collectd.vpn $(ROOTFS_DIR_)/etc/collectd.vpn
+	$(Q)-ln -f -s /etc/rc.d/init.d/collectd $(ROOTFS_DIR_)/etc/rc.d/rc0.d/K50collectd 
+	$(Q)-ln -f -s /etc/rc.d/init.d/collectd $(ROOTFS_DIR_)/etc/rc.d/rc3.d/S29collectd
+	$(Q)-ln -f -s /etc/rc.d/init.d/collectd $(ROOTFS_DIR_)/etc/rc.d/rc6.d/K50collectd 
+	
+	
+	#build PERL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl && PERL5LIB=$(ROOTFS_DIR)/usr/share/perl5:$(ROOTFS_DIR)/usr/lib/perl5 perl Makefile.PL \
+						    PREFIX=$(ROOTFS_DIR_)/usr \
+						    CC=$(CROSS)-gcc \
+						    AR=$(CROSS)-ar \
+						    LD=$(CROSS)-gcc  \
+						    FULL_AR=$(CROSS)-ar \
+						    LDDLFLAGS="-L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE/ -shared -fPIC -O2 -g -pipe -Wall -L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usrlib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usrlib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    OSNAME="$(PERL_TARGET)" \
+						    OSVERS="3.14" \
+						    SITELIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    SITEARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    VENDORARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    VENDORLIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_LIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_ARCHLIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    CCFLAGS="-D_REENTRANT -D_GNU_SOURCE -fno-strict-aliasing -pipe -fstack-protector -I$(ROOTFS_DIR)/usr/include" \
+						    OPTIMIZE="-O2 -g -pipe -Wall" \
+						    INC=""
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl && sed -i 's/lib64/lib/g' Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/bindings/perl && make install
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+

@@ -1,0 +1,66 @@
+
+PROG       = hostapd
+PAK_VER    = 34
+
+DEPS       = ""
+
+
+
+
+
+
+
+VER        = 2.4
+APP_DIR    = hostapd-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = 04578f3f2c3eb1bec1adf30473813912
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#PATCH
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/patches/hostapd-2.3_increase_EAPOL-timeouts.patch
+	
+	cd $(SRC_DIR)/$(APP_DIR)/hostapd && cp $(CFG_DIR)/hostapd/config ./.config
+	cd $(SRC_DIR)/$(APP_DIR)/hostapd && sed -e "s@/usr/local@/usr@g" -i Makefile
+	
+	#CONFIGURE
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	#CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	#LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	#./configure --prefix=/usr \
+	#--host=$(CROSS) CC=$(CROSS)-gcc
+	
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/hostapd && make CONFIG_OS="unix" CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib "
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/hostapd && make DESTDIR=$(ROOTFS_DIR) CFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include " \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PREFIX=$(ROOTFS_DIR)/usr \
+	install
+	
+	$(Q)-install -v -m 644 $(CFG_DIR)/backup/includes/hostapd $(ROOTFS_DIR)/var/ipfire/backup/addons/includes/hostapd
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/ipfire/wlanap
+	$(Q)-touch $(ROOTFS_DIR)/var/ipfire/wlanap/settings
+	$(Q)-cp -vrf $(CFG_DIR)/hostapd/hostapd.conf $(ROOTFS_DIR)/var/ipfire/wlanap/hostapd.conf
+	$(Q)-touch $(ROOTFS_DIR)/var/ipfire/wlanap/hostapd.accept
+	$(Q)-touch $(ROOTFS_DIR)/var/ipfire/wlanap/hostapd.deny
+	$(Q)-cp -vrf $(ROOTFS_DIR)/var/ipfire/wlanap/hostapd.* /etc/
+	$(Q)-chown nobody:nobody $(ROOTFS_DIR)/var/ipfire/wlanap/*
+	$(Q)-chmod 644 $(ROOTFS_DIR)/var/ipfire/wlanap/*
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

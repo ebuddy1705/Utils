@@ -1,0 +1,36 @@
+
+VER        = ipfire
+APP_DIR    = web-user-interface-$(VER)
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):	
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-mkdir -p $(ROOTFS_DIR)/srv/web/ipfire/{cgi-bin,html}
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/updatecache/{download,metadata}
+	$(Q)-cp -aR $(HTML_SRC)/* $(ROOTFS_DIR)/srv/web/ipfire
+
+	# Change CONFIG_ROOT in cgi-scripts
+	$(Q)-for i in $(ROOTFS_DIR)/srv/web/ipfire/cgi-bin/{*,logs.cgi/*,vpn.cgi/*}; do \
+	    if [ -f $$i ]; then \
+	        sed -i "s+CONFIG_ROOT+$(CONFIG_ROOT)+g" $$i; \
+	    fi; \
+	done
+	
+	$(Q)-chown -R root:root $(ROOTFS_DIR)/srv/web/ipfire
+	$(Q)-chmod -R 755 $(ROOTFS_DIR)/srv/web/ipfire/cgi-bin
+	$(Q)-chmod -R 644 $(ROOTFS_DIR)/srv/web/ipfire/html
+	$(Q)-chmod 755 $(ROOTFS_DIR)/srv/web/ipfire/html $(ROOTFS_DIR)/srv/web/ipfire/html/{index.cgi,redirect.cgi,dial.cgi,images,include,themes,themes/*,themes/*/*}
+	$(Q)-ln -svf ipfire $(ROOTFS_DIR)/srv/web/ipfire/html/themes/ipfire-rounded
+
+	# Reset permissions of redirect templates and theme directories
+	$(Q)-find $(ROOTFS_DIR)/srv/web/ipfire/html/{redirect-templates,themes} -type d | xargs chmod -v 755
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

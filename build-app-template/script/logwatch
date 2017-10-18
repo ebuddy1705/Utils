@@ -1,0 +1,42 @@
+
+
+
+VER        = 7.4.1
+APP_DIR    = logwatch-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = a0c3d8721f877bdcd4a9089eb1b4691b
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#PATCH
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/logwatch-7.4.1.patch
+	
+	#COMPILE and INSTALL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && chmod 755 install_logwatch.sh
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && yes "" | ./install_logwatch.sh $(ROOTFS_DIR)
+	
+	$(Q)cp -f $(CFG_DIR)/logwatch/dialup $(ROOTFS_DIR)/usr/share/logwatch/scripts/services/dialup
+	$(Q)cp -f $(CFG_DIR)/logwatch/dialup.conf $(ROOTFS_DIR)/usr/share/logwatch/dist.conf/services/dialup.conf
+	
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/cache/logwatch
+	$(Q)chmod -v 777 $(ROOTFS_DIR)/var/cache/logwatch
+	$(Q)-mkdir -p $(ROOTFS_DIR)/var/log/logwatch
+	$(Q)chmod -v 755 $(ROOTFS_DIR)/var/log/logwatch
+	$(Q)-rm -rf $(ROOTFS_DIR)/etc/logwatch/conf
+	$(Q)ln -vsf /usr/share/logwatch/default.conf $(ROOTFS_DIR)/etc/logwatch/conf
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+	

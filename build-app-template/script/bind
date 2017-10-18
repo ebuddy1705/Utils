@@ -1,0 +1,57 @@
+
+export CPPFLAGS = -DDIG_SIGCHASE
+
+
+VER        = 9.10.2-P3
+APP_DIR    = bind-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = a810d5d65fbdcf28dcda80d646913c3a
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+
+      
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include  -I$(ROOTFS_DIR)/usr/include/gssapi" \
+	  CPPFLAGS="-I$(ROOTFS_DIR)/usr/include  -I$(ROOTFS_DIR)/usr/include/gssapi" \
+	  LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	  PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	  ./configure --prefix=/usr \
+	  --host=$(CROSS) \
+	  --with-randomdev=/dev/random \
+	  --with-openssl=$(ROOTFS_DIR)/usr \
+	  --with-ecdsa=yes --with-gost=no \
+	  BUILD_CC=gcc \
+	  --with-gssapi=no \
+	  --with-libxml2=no \
+	  --disable-static \
+	  --disable-openssl-version-check
+
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C lib/dns
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C lib/isc
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C lib/bind9
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C lib/isccfg
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C lib/lwres
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C bin/dig
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C bin/dig DESTDIR=$(ROOTFS_DIR)  install
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C bin/nsupdate
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && make -C bin/nsupdate DESTDIR=$(ROOTFS_DIR)  install
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+
+	$(Q)install -v -m 644 $(CFG_DIR)/bind/trusted-key.key \
+		$(ROOTFS_DIR)/etc/trusted-key.key
+		
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

@@ -1,0 +1,54 @@
+
+VER        = 3.5.1
+APP_DIR    = iproute2-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.xz
+md5_$(DL_FILE) = d4425b44edd5eacd6099e672e4baacbf
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && echo "TC_CONFIG_XT:=y" >> Config
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && echo "IP_CONFIG_SETNS:=y" >> Config
+
+	#modify Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR); \
+	for dir in ip misc tc; do \
+	    cp $$dir/Makefile{,.orig}; \
+	    sed 's/0755 -s/0755/' $$dir/Makefile.orig > $$dir/Makefile; \
+	done
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR); \
+	cp misc/Makefile{,.orig}; \
+	sed '/^TARGETS./s@arpd@@g' misc/Makefile.orig > misc/Makefile
+
+
+	#compile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include -I$(ROOTFS_DIR)/usr/include/linux -I$(ROOTFS_DIR)/usr/include/linux/netfilter_ipv4" \
+					    LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/lib" \
+					    PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+					    make \
+					    CC=$(CROSS)-gcc \
+					    AR=$(CROSS)-ar \
+					    RANLIB=$(CROSS)-ranlib \
+					    LD=$(CROSS)-ld \
+					    DESTDIR=$(ROOTFS_DIR) \
+					    install
+
+	$(Q)echo "200	static" >> $(ROOTFS_DIR)/etc/iproute2/rt_tables
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

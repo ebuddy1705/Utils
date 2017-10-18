@@ -1,0 +1,21 @@
+diff -Naur openssh-6.8p1/Makefile.in openssh-6.8p1/Makefile.in
+--- openssh-6.8p1/Makefile.in	2015-03-17 12:49:20.000000000 +0700
++++ openssh-6.8p1/Makefile.in	2015-11-13 07:52:02.362810881 +0700
+@@ -28,7 +28,7 @@
+ SSH_PKCS11_HELPER=$(libexecdir)/ssh-pkcs11-helper
+ PRIVSEP_PATH=@PRIVSEP_PATH@
+ SSH_PRIVSEP_USER=@SSH_PRIVSEP_USER@
+-STRIP_OPT=@STRIP_OPT@
++STRIP_OPT=
+ TEST_SHELL=@TEST_SHELL@
+ 
+ PATHS= -DSSHDIR=\"$(sysconfdir)\" \
+@@ -286,7 +286,7 @@
+ 	$(AUTORECONF)
+ 	-rm -rf autom4te.cache
+ 
+-install: $(CONFIGFILES) $(MANPAGES) $(TARGETS) install-files install-sysconf host-key check-config
++install: $(CONFIGFILES) $(MANPAGES) $(TARGETS) install-files install-sysconf
+ install-nokeys: $(CONFIGFILES) $(MANPAGES) $(TARGETS) install-files install-sysconf
+ install-nosysconf: $(CONFIGFILES) $(MANPAGES) $(TARGETS) install-files
+ 

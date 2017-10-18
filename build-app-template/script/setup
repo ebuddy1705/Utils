@@ -1,0 +1,28 @@
+
+VER        = ipfire
+APP_DIR    = setup
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)rm -rf $(SRC_DIR)/$(APP_DIR) && cp -rf $(CENTIC_SRC)/$(APP_DIR) $(SRC_DIR)
+	$(Q)cp -rf $(CENTIC_INFO_DIR)/centic-info.h $(SRC_DIR)/$(APP_DIR)
+	
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR); \
+	patch -Np1 < $(PATCHES_DIR)/setup.patch
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make CFLAGS+="-I$(ROOTFS_DIR)/usr/include  -Wall -DCENTIC_TEST" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " CC=${CROSS}-gcc LD=${CROSS}-ld PREFIX=$(ROOTFS_DIR)/usr LIBS="-lsmooth"
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make PREFIX=$(ROOTFS_DIR)/usr LIBS="-lsmooth" install
+	$(Q)install -m 755 $(SRC_DIR)/$(APP_DIR)/probenic.sh $(ROOTFS_DIR)/usr/bin/
+	
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

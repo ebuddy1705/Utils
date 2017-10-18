@@ -1,0 +1,52 @@
+diff -Naur httpd-2.2.29/server/Makefile.in httpd-2.2.29/server/Makefile.in
+--- httpd-2.2.29/server/Makefile.in	2011-04-14 23:37:58.000000000 +0700
++++ httpd-2.2.29/server/Makefile.in	2015-11-02 17:04:40.110982000 +0700
+@@ -21,9 +21,14 @@
+ include $(top_builddir)/build/rules.mk
+ include $(top_srcdir)/build/library.mk
+ 
++gen_test_char.lo: gen_test_char.c
++	$(LIBTOOL) $(LTFLAGS) --mode=compile --tag=CC gcc $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(ALL_INCLUDES) -o $@ -c $< && touch $@
++
++
+ gen_test_char_OBJECTS = gen_test_char.lo
+ gen_test_char: $(gen_test_char_OBJECTS)
+-	$(LINK) $(EXTRA_LDFLAGS) $(gen_test_char_OBJECTS) $(EXTRA_LIBS)
++	#$(LINK) $(EXTRA_LDFLAGS) $(gen_test_char_OBJECTS) $(EXTRA_LIBS)
++	$(LIBTOOL) --mode=link --tag=CC gcc $(ALL_CFLAGS)  $(LT_LDFLAGS) $(EXTRA_LDFLAGS) $(NOTEST_LDFLAGS) $< -o $@
+ 
+ test_char.h: gen_test_char
+ 	./gen_test_char > test_char.h
+diff -Naur httpd-2.2.29/srclib/apr/Makefile.in httpd-2.2.29/srclib/apr/Makefile.in
+--- httpd-2.2.29/srclib/apr/Makefile.in	2014-03-17 22:10:26.000000000 +0700
++++ httpd-2.2.29/srclib/apr/Makefile.in	2015-11-02 15:26:22.813812000 +0700
+@@ -134,8 +134,11 @@
+ 
+ OBJECTS_gen_test_char = tools/gen_test_char.lo $(LOCAL_LIBS)
+ tools/gen_test_char.lo: make_tools_dir
++tools/gen_test_char.lo: tools/gen_test_char.c
++	$(LIBTOOL) $(LTFLAGS) --mode=compile --tag=CC gcc $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(ALL_INCLUDES) -o $@ -c $< && touch $@
+ tools/gen_test_char@EXEEXT@: $(OBJECTS_gen_test_char)
+-	$(LINK_PROG) $(OBJECTS_gen_test_char) $(ALL_LIBS)
++	$(LIBTOOL) $(LTFLAGS) --mode=link --tag=CC gcc $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(ALL_INCLUDES) $(LT_LDFLAGS) \
++	    -no-install $(EXTRA_LDFLAGS) $(NOTEST_LDFLAGS) -o $@ $(OBJECTS_gen_test_char) $(ALL_LIBS)
+ 
+ include/private/apr_escape_test_char.h: tools/gen_test_char@EXEEXT@
+ 	$(APR_MKDIR) include/private
+diff -Naur httpd-2.2.29/srclib/pcre/Makefile.in httpd-2.2.29/srclib/pcre/Makefile.in
+--- httpd-2.2.29/srclib/pcre/Makefile.in	2005-02-11 19:00:41.000000000 +0700
++++ httpd-2.2.29/srclib/pcre/Makefile.in	2015-11-02 16:56:20.819267000 +0700
+@@ -12,7 +12,12 @@
+ $(LTLIBRARY_OBJECTS) dftables.lo: config.h
+ 
+ dftables: dftables.lo
+-	$(LINK) $(EXTRA_LDFLAGS) dftables.lo $(EXTRA_LIBS)
++	@echo "start build ------- dftables"
++	#$(LINK) $(EXTRA_LDFLAGS) dftables.lo $(EXTRA_LIBS)
++	$(LIBTOOL) --mode=link --tag=CC gcc $(ALL_CFLAGS)  $(LT_LDFLAGS) $(EXTRA_LDFLAGS) $(NOTEST_LDFLAGS) $< -o $@
++	@echo "finish build ------- dftables"
++dftables.lo: dftables.c
++	$(LIBTOOL) $(LTFLAGS) --mode=compile --tag=CC gcc $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(ALL_INCLUDES) -o $@ -c $< && touch $@
+ 
+ $(srcdir)/chartables.c: dftables
+ 	./dftables $@

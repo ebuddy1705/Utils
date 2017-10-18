@@ -1,0 +1,33 @@
+
+
+VER        = 2.6
+APP_DIR    = flag-icons-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).zip
+md5_$(DL_FILE) = 992db1bc950dfdd436699b7d2ad33c2d
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-mkdir -p $(SRC_DIR)/$(APP_DIR)
+	$(Q)unzip $(SRC_DIR)/$(DL_FILE) -d $(SRC_DIR)/$(APP_DIR)
+	
+	# Create flage image folder.
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && mkdir -pv $(ROOTFS_DIR)/srv/web/ipfire/html/images/flags/
+
+	# Only copy the country flags.
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && cp -avf flags-iso/shiny/16/??.png \
+		$(ROOTFS_DIR)/srv/web/ipfire/html/images/flags/
+
+	# Copy flag icon for unknown countries.
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && cp -avf flags-iso/shiny/16/_unknown.png \
+		$(ROOTFS_DIR)/srv/web/ipfire/html/images/flags/unknown.png
+
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)

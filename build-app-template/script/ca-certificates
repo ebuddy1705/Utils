@@ -1,0 +1,32 @@
+
+
+
+VER        = 20150710
+APP_DIR    = ca-certificates
+
+DL_FILE    = $(APP_DIR)
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)rm -rf $(SRC_DIR)/$(APP_DIR)
+	$(Q)cp -av $(CFG_DIR)/$(APP_DIR) $(SRC_DIR)/$(APP_DIR)
+
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sh ./build.sh
+
+	$(Q)-mkdir -pv $(ROOTFS_DIR)/etc/ssl/certs
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && install -p -m 644 ca-bundle.crt ca-bundle.trust.crt \
+		$(ROOTFS_DIR)/etc/ssl/certs
+	$(Q)ln -svf /etc/ssl/certs/ca-bundle.crt $(ROOTFS_DIR)/etc/ssl/cert.pem
+
+	
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+

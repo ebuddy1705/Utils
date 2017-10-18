@@ -1,0 +1,101 @@
+
+VER        = 2.17
+APP_DIR    = rootfs
+
+
+
+BUSYBOX_VER        = 1.23.1
+BUSYBOX_APP_DIR    = busybox-$(BUSYBOX_VER)
+BUSYBOX_DL_FILE    = $(BUSYBOX_APP_DIR).tar.bz2
+
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)-rm -rf $(ROOTFS_DIR) && mkdir $(ROOTFS_DIR)
+	$(Q)-rm -rf $(SRC_DIR)/$(BUSYBOX_APP_DIR) && tar -jxf $(EXTPKGS_DIR)/$(BUSYBOX_DL_FILE) -C $(SRC_DIR)
+	
+	$(Q)cd $(SRC_DIR)/$(BUSYBOX_APP_DIR) && make ARCH=arm CONFIG_PREFIX=$(ROOTFS_DIR) CROSS_COMPILE=$(CROSS)- defconfig
+	$(Q)cd $(SRC_DIR)/$(BUSYBOX_APP_DIR) && make ARCH=arm CONFIG_PREFIX=$(ROOTFS_DIR) CROSS_COMPILE=$(CROSS)- install
+
+
+	$(Q)cd $(ROOTFS_DIR) ;\
+	mkdir -p lib usr/lib dev etc etc/init.d mnt opt proc root sys tmp var var/log var/www ;\
+	cp /opt/Xilinx/$(XILINX_VER)/ISE_DS/EDK/gnu/arm/lin/$(CROSS)/libc/lib/* lib -r ;\
+	$(CROSS)-strip lib/* ;\
+	cp /opt/Xilinx/$(XILINX_VER)/ISE_DS/EDK/gnu/arm/lin/$(CROSS)/libc/sbin/* sbin -r ;\
+	cp /opt/Xilinx/$(XILINX_VER)/ISE_DS/EDK/gnu/arm/lin/$(CROSS)/libc/usr/bin/* usr/bin -r ;\
+	
+	
+#	$(Q)cd $(SRC_DIR)/$(APP_DIR) ;\
+#	echo "LABEL=/     /           tmpfs   defaults        0 0
+#	      none        /dev/pts    devpts  gid=5,mode=620  0 0
+#	      none        /proc       proc    defaults        0 0
+#	      none        /sys        sysfs   defaults        0 0
+#	      none        /tmp        tmpfs   defaults        0 0" > $(ROOTFS_DIR)/etc/fstab ;\
+#	
+#	echo "::sysinit:/etc/init.d/rcS
+#
+#	      # /bin/ash
+#	      # 
+#	      # Start an askfirst shell on the serial ports
+#
+#	      ttyPS0::respawn:-/bin/ash
+#
+#	      # What to do when restarting the init process
+#
+#	      ::restart:/sbin/init
+#
+#	      # What to do before rebooting
+#
+#	      ::shutdown:/bin/umount -a -r" > $(ROOTFS_DIR)/etc/inittab ;\
+#	
+#	echo "root:$1$qC.CEbjC$SVJyqm.IG.gkElhaeM.FD0:0:0:root:/root:/bin/sh" >  $(ROOTFS_DIR)/etc/passwd ;\
+#	
+#	=============$(ROOTFS_DIR)/etc/init.d/rcS  ===============
+#	    #!/bin/sh
+#
+#	    echo "Starting rcS..."
+#
+#	    echo "++ Mounting filesystem"
+#	    mount -t proc none /proc
+#	    mount -t sysfs none /sys
+#	    mount -t tmpfs none /tmp
+#
+#	    echo "++ Setting up mdev"
+#
+#	    echo /sbin/mdev > /proc/sys/kernel/hotplug
+#	    mdev -s
+#
+#	    mkdir -p /dev/pts
+#	    mkdir -p /dev/i2c
+#	    mount -t devpts devpts /dev/pts
+#
+#	    echo "++ Starting telnet daemon"
+#	    telnetd -l /bin/sh
+#
+#	    echo "++ Starting http daemon"
+#	    httpd -h /var/www
+#
+#	    echo "++ Starting ftp daemon"
+#	    tcpsvd 0:21 ftpd ftpd -w /&
+#
+#	    echo "++ Starting dropbear (ssh) daemon"
+#	    dropbear
+#
+#	    echo "rcS Complete"
+
+#	    chmod 755 etc/init.d/rcS
+#	    bash> sudo chown root:root etc/init.d/rcS
+
+	$(Q)touch $@
+	
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+

@@ -1,0 +1,42 @@
+
+VER        = 2.0.33
+APP_DIR    = gd-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+md5_$(DL_FILE) = be0a6d326cd8567e736fbc75df0a5c45
+
+obj:= _download_$(DL_FILE) _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include -I$(ROOTFS_DIR)/usr/include/libpng12 -I$(ROOTFS_DIR)/usr/include/libxml2 -I$(ROOTFS_DIR)/usr/include/fontconfig -I$(ROOTFS_DIR)/usr/include/freetype2" \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include -I$(ROOTFS_DIR)/usr/include/libpng12" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	ac_cv_lib_png_png_create_read_struct=yes \
+	ac_cv_lib_fontconfig_FcInit=yes \
+	ac_cv_lib_freetype_FT_Init_FreeType=yes \
+	./configure --prefix=/usr \
+	--host=$(CROSS) CC=$(CROSS)-gcc --disable-nls \
+	--with-freetype="$(ROOTFS_DIR)/usr" \
+	--with-fontconfig="$(ROOTFS_DIR)/usr" \
+	--with-png="$(ROOTFS_DIR)/usr" 
+  
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's:\-I/usr/include/freetype2:\-I$(ROOTFS_DIR)/usr/include/freetype2:g' Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && sed -i 's:\-L/usr/lib64::g' Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install LIBPNG12_CONFIG="$(ROOTFS_DIR)/usr/bin/libpng-config" LIBPNG_CONFIG=" "
+	
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" " /usr/lib" " $(ROOTFS_DIR)/usr/lib"
+	$(Q)../tools/find_and_replace.sh "la" "$(ROOTFS_DIR)/usr/lib" "libdir='/usr/lib'" "libdir='$(ROOTFS_DIR)/usr/lib'"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
+
+
+

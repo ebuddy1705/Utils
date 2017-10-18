@@ -1,0 +1,111 @@
+
+
+PROG       = cyrus-imapd
+PAK_VER    = 5
+
+DEPS       = ""
+
+
+
+
+VER        = 2.3.19
+APP_DIR    = cyrus-imapd-$(VER)
+DL_FROM    = $(URL_IPFIRE)
+DL_FILE    = $(APP_DIR).tar.gz
+
+
+
+#VER        = 2.2.12
+#APP_DIR    = cyrus-imapd-$(VER)
+#DL_FROM    = $(URL_IPFIRE)
+#DL_FILE    = $(APP_DIR).tar.gz
+#md5_$(DL_FILE) = 70b3bba526a8d36d3bb23a87d37e9188
+
+
+obj:= _build _clean
+
+_build: $(INFO_DIR)/$(APP_DIR)
+
+
+$(INFO_DIR)/$(APP_DIR):
+	$(Q)echo ============== Cross $(APP_DIR) ===============
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && patch -Np1 < $(PATCHES_DIR)/cyrus-imapd-2.2.12-autocreate-0.9.4.diff
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR) && patch -Np0 < $(PATCHES_DIR)/cyrus-imapd-2.2.12-gcc4.patch
+	
+	#$(Q)-rm -rf $(SRC_DIR)/$(APP_DIR)
+	#$(Q)tar -xzf $(EXTPKGS_DIR)/$(DL_FILE) -C $(SRC_DIR)
+	
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR) && sed -i "s:-s::g" imtest/Makefile.in
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && CFLAGS="-I$(ROOTFS_DIR)/usr/include  -fPIC" \
+	CPPFLAGS="-I$(ROOTFS_DIR)/usr/include   -fPIC" \
+	LDFLAGS="-L$(ROOTFS_DIR)/usr/lib " \
+	PKG_CONFIG_PATH=$(ROOTFS_DIR)/usr/lib/pkgconfig \
+	./configure --prefix=/usr  \
+				--host=$(CROSS) CC=$(CROSS)-gcc LD=$(CROSS)-ld AR=$(CROSS)-ar \
+				--with-service-path=$(ROOTFS_DIR)/usr/lib/cyrus \
+				--with-cyrus-prefix=$(ROOTFS_DIR)/usr/lib/cyrus \
+				--sysconfdir=/var/ipfire/cyrusimap \
+				--with-auth=unix --with-sasl --with-idle=idled \
+				--with-syslogfacility=MAIL --enable-listext --without-snmp --with-openssl \
+				--with-sasl=$(ROOTFS_DIR)/usr \
+				--with-bdb=$(ROOTFS_DIR)/usr
+				
+	$(Q)-cd $(SRC_DIR)/$(APP_DIR) && sed -i "s:perl::" Makefile
+	
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make depend
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make 
+	$(Q)cd $(SRC_DIR)/$(APP_DIR) && make DESTDIR=$(ROOTFS_DIR) install
+	
+	#===================== BUILD PERL CYRUS MODULE
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl/imap && sed -i "s%,'y'%,'n'%" Makefile.PL
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl/imap &&  PERL5LIB=$(ROOTFS_DIR)/usr/share/perl5:$(ROOTFS_DIR)/usr/lib/perl5 perl Makefile.PL \
+						    PREFIX=$(ROOTFS_DIR)/usr \
+						    CC=$(CROSS)-gcc \
+						    AR=$(CROSS)-ar \
+						    LD=$(CROSS)-gcc  \
+						    FULL_AR=$(CROSS)-ar \
+						    LDDLFLAGS="-L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE/ -shared -fPIC -O2 -g -pipe -Wall -L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    LDFLAGS="-L$(ROOTFS_DIR)/usr/lib -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET) -L$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)/CORE" \
+						    OSNAME="$(PERL_TARGET)" \
+						    OSVERS="3.14" \
+						    SITELIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    SITEARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    VENDORARCHEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    VENDORLIBEXP="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_LIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)" \
+						    PERL_ARCHLIB="$(ROOTFS_DIR)/usr/lib/perl5/$(PERL_VER)/$(PERL_TARGET)" \
+						    CCFLAGS="-D_REENTRANT -D_GNU_SOURCE -fno-strict-aliasing -pipe -fstack-protector -I$(ROOTFS_DIR)/usr/include -I$(ROOTFS_DIR)/usr/include/cyrus" \
+						    OPTIMIZE="-O2 -g -pipe -Wall" \
+						    INC=""
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl/imap && sed -i 's/lib64/lib/g' Makefile
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl/imap && make
+	$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl/imap && make install
+	
+	#====================== sieve module
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl/sieve && make
+	#$(Q)cd $(SRC_DIR)/$(APP_DIR)/perl/sieve && make install
+	
+	$(Q)-mkdir $(ROOTFS_DIR)/var/imap
+	$(Q)-chown cyrus:mail $(ROOTFS_DIR)/var/imap
+	$(Q)-chmod 755 $(ROOTFS_DIR)/var/imap
+	$(Q)-mkdir $(ROOTFS_DIR)/var/log/imap
+	$(Q)-chown cyrus:mail $(ROOTFS_DIR)/var/log/imap
+	$(Q)-chmod 750 $(ROOTFS_DIR)/var/log/imap
+	$(Q)-mkdir $(ROOTFS_DIR)/usr/sieve
+	$(Q)-chown cyrus:mail $(ROOTFS_DIR)/usr/sieve
+	$(Q)-chmod 750 $(ROOTFS_DIR)/usr/sieve
+	$(Q)-mkdir $(ROOTFS_DIR)/var/ipfire/cyrusimap
+	$(Q)cp -f $(CFG_DIR)/cyrus-imapd/* $(ROOTFS_DIR)/var/ipfire/cyrusimap
+	$(Q)cp -f $(SRC_DIR)/$(APP_DIR)/tools/mkimap $(ROOTFS_DIR)/usr/bin
+	#$(Q)sudo -u cyrus /usr/bin/mkimap $(ROOTFS_DIR)/var/ipfire/cyrusimap/imapd.conf
+	$(Q)-chown cyrus.mail $(ROOTFS_DIR)/var/imap/socket
+	$(Q)install -v -m 644 $(CFG_DIR)/backup/includes/cyrus-imapd \
+		$(ROOTFS_DIR)/var/ipfire/backup/addons/includes/cyrus-imapd
+		
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/usr" "=$(ROOTFS_DIR)/usr"
+	$(Q)../tools/find_and_replace.sh "pc" "$(ROOTFS_DIR)/usr/lib/pkgconfig" "=/lib" "=$(ROOTFS_DIR)/lib"
+	$(Q)touch $@
+
+_clean:
+	$(Q)-rm -f $(INFO_DIR)/$(APP_DIR)
