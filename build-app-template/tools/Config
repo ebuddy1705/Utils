@@ -13,8 +13,8 @@ EXTPKGS_DIR=${APP_DIR}/extpkgs
 #depend on you target platform
 ROOTFS_DIR=""
 if [ "${TOOLCHAIN_DIR}" = "" ]; then
-	export TOOLCHAIN_DIR=/opt/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin
-	export PATH=$PATH:${TOOLCHAIN_DIR}
+	export TOOLCHAIN_DIR=/opt/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64
+	export PATH=$PATH:${TOOLCHAIN_DIR}/bin
 fi
 CROSS=arm-linux-gnueabihf
 	
