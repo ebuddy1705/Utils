@@ -1,0 +1,42 @@
+*** Start Log ***
+section_1: 123, 3243, 34, 454
+section_2: 23, 445, 76, 999, 344
+
+[section_A]
+para_A1 para_A2 para_A3
+123 456 788
+
+[section_B]
+para_B1 para_B2 para_B3 para_B4
+123 456 788 10
+321 654 987 10
+
+recognition version: 123.34.34
+result1: 232
+result2: 324, 343, ,45
+test_time: 12
+*** Finish Log ***
+
+*** Start Log ***
+section_1: 34, 55, 788, 2323
+section_2: 23, 23, 343, 56, 7787
+
+[section_A]
+para_A1 para_A2 para_A3
+123 456 788
+
+[section_B]
+para_B1 para_B2 para_B3 para_B4
+123 456 789 10
+321 654 987 10
+
+[section_C]
+para_C1 para_C2 para_C3 para_C4 para_C5
+123 456 789 10 345
+321 654 987 10 454
+12 23 345 10 45
+
+recognition version: 123.34.34
+result1: 232
+result2: 324, 343, ,45
+*** Finish Log ***
