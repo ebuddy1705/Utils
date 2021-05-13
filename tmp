@@ -1,0 +1,73 @@
+
+
+//---java inerface--
+    public static class Example3Struct extends Structure {
+    	public int valtest;
+    	public String songname;
+    	public PointerByReference  listsong;
+    	
+		public static class ByReference extends Example3Struct implements Structure.ByReference {}
+		
+
+		@Override
+	    protected List getFieldOrder() {
+	        return Arrays.asList(new String[]{"valtest", "songname", "listsong"});
+	    }
+		
+	}
+
+	// unless otherwise specified, ByReference is assumed - but it can't hurt to be explicit
+	public void example3_sendStruct(Example3Struct.ByReference sval);
+  
+  
+  //---java call---
+  JNA_CppCLIInterface.Example3Struct.ByReference e3ref = new JNA_CppCLIInterface.Example3Struct.ByReference();
+				
+				
+				e3ref.listsong = new PointerByReference();
+				
+				JNA_CppCLIInterface.INSTANCE.example3_sendStruct(e3ref);
+				System.out.println(e3ref.songname);
+				
+				
+				
+				// extract values
+				final Pointer ex28p = e3ref.listsong.getValue();
+				long ex28offset = 0;
+				int ex28count = 0;
+				while (ex28count < e3ref.valtest) {
+					String s = ex28p.getString(ex28offset);
+					System.out.println("\t" + s);
+					ex28offset += s.length() + 1;
+					ex28count++;
+				}
+        
+        
+        //----C----
+        
+        
+	typedef struct Example3Struct {
+		int valtest;
+		char *songname;
+		char **listsong;
+	} Example3Struct;
+
+	EXTERN_DLL_EXPORT void example3_sendStruct(Example3Struct* sval)
+	{
+		// note: printfs called from C won't be flushed
+		// to stdout until the Java process completes
+		sval->songname = "hihi haha";
+
+		sval->valtest = 3;
+		assert(NULL != sval->listsong);
+
+		*sval->listsong = (char*)malloc(sizeof(char) * 14);
+		memset(*sval->listsong, 0, sizeof(char) * 14);
+
+		strcpy(*sval->listsong, "one");
+		strcpy((*sval->listsong) + 4, "two");
+		strcpy((*sval->listsong) + 8, "three");
+
+
+		printf("(C) %d\n", sval->valtest);
+	}
