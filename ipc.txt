@@ -1,0 +1,24 @@
+
+IPC:
+- https://docs.microsoft.com/en-us/windows/win32/ipc/interprocess-communications
+- https://en.wikipedia.org/wiki/Inter-process_communication
+
+
+1. SendMessage
+- https://docs.microsoft.com/en-us/windows/win32/dataxchg/using-data-copy
+
+
+IPC比較:
+          　　　　Windows message + shared memory          |           socket
+初期化手順       　普通                                           複雑
+                                                                ・clientとserverの初期化手順が複雑、
+                                                                ・ポート、IP adress を設定
+通信スピード　　　　高い                                          遅い（パケットがdropする可能性がある、再送することがある）
+
+２PCの間で通信　　　不可能                                        可能
+
+⇒　同じPCであれば　「Windows message + shared memory」にしていい
+⇒　同じPCでも２台のPCで通信する場合は　socketにする
+
+
+
