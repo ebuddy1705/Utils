@@ -22,3 +22,7 @@ IPC比較:
 
 
 
+https://www.geeksforgeeks.org/socket-programming-in-c-sharp/
+
+
+
