@@ -1,0 +1,126 @@
+----- start aite -----
+CString exepath, cmdline;
+exepath.Format( _T("%s%s"), folder, aite_name );
+cmdline.Format( _T("/HWND:%d"), frame );
+HINSTANCE ret = ShellExecute( NULL, NULL, exepath, cmdline, folder, SW_SHOW );
+if ( res <= (HINSTANCE)32 ) { return FALSE; }
+
+
++	cmdline	L"/HWND:12783496"
++	exepath	L"C:\\path\\to\\aite.exe"
++	folder	L"C:\\path\\to\\"
+
+
+
+-----aite create shared memory-----
+CAnalyzeCmdLine rCmdInfo;
+	ParseCommandLine( rCmdInfo );
+
+// デバッグフラグセット
+	m_DebugFlag = rCmdInfo.m_DebugFlag;
+
+// 呼び出しウィンドウハンドルの確認と保存
+	if ( !m_DebugFlag && !rCmdInfo.m_ParentHWND ) {
+		AfxMessageBox( _T("ERROR: illegal calling"), MB_OK|MB_ICONSTOP );
+		return FALSE;
+	}
+	m_ParentHWnd = rCmdInfo.m_ParentHWND;
+
+// マップドファイル作成
+	ULONGLONG size = sizeof(SMFStructNPMVSim);
+	DWORD upper_size = (DWORD)(size>>32);
+	DWORD lower_size = (DWORD)(size&0xffffffff);
+	HANDLE mfhandle = CreateFileMapping(
+		(HANDLE)-1,						// 共有メモリの場合は0xffffffffを指定
+		NULL,							// セキュリティ属性。NULLでよい
+		PAGE_READWRITE,					// プロテクト属性を読み書き可能に指定
+		upper_size,						// ファイルサイズの上位32ビット
+		lower_size,						// ファイルサイズの下位32ビット
+		_T("MyShareMemory") );		    // メモリマップドファイルの名前
+	if ( !mfhandle ) {
+		AfxMessageBox( _T("OpenFileMapping Error"), MB_OK|MB_ICONSTOP );
+		UINT id = RegisterWindowMessage( _T("WM_NPMVSIM_START") );
+		if ( theApp.m_ParentHWnd ) {
+			::PostMessage( m_ParentHWnd, id, NULL, NULL ) ;     // エラー終了通知
+        }
+		return FALSE;
+	}
+
+// プロセス内のアドレス空間にファイルのビューをマップ
+	m_Map = (PMystruct_t)MapViewOfFile( mfhandle, FILE_MAP_ALL_ACCESS, 0, 0, (SIZE_T)size );
+
+	
+	
+-----aite set window name-----
+static char g_window_title[256];
+BOOL CMainFrame::PreCreateWindow(
+CREATESTRUCT&	cs)			
+{
+	cs.x = left;
+	if ( theApp.m_DebugFlag ) { cs.y = top; }
+    else                      { cs.y = -2000; }    
+	cs.cx = width;
+	cs.cy = height;
+
+	cs.style &= ~FWS_ADDTOTITLE;
+    extern const char* APL_VERm;
+    ZeroMemory( g_window_title, sizeof(g_window_title) );
+    _stprintf_s( g_window_title, sizeof(g_window_title), _T("MyWindow - %s"), APL_VERm );
+    cs.lpszName = (LPCSTR)g_window_title;
+	
+	
+	return TRUE;
+}
+
+
+	
+-----watashi-----
+
+//get aite handle and send to aite my frame
+	CWnd* win = m_MainFrame->GetNextWindow( GW_HWNDNEXT );
+	HWND aite_hd = NULL;
+	while ( win ) {
+		CString title;
+		win->GetWindowText( title );
+		if ( title.Find( _T("MyWindow - ") ) == 0 ) {
+			aite_hd = win->GetSafeHwnd();
+			break;
+		}
+		win = win->GetNextWindow( GW_HWNDNEXT );
+	}
+	if ( aite_hd == NULL ) {
+		win = m_MainFrame->GetNextWindow( GW_HWNDPREV );
+		while ( win ) {
+			CString title;
+			win->GetWindowText( title );
+			if ( title.Find( _T("MyWindow - ") ) == 0 ) {
+				aite_hd = win->GetSafeHwnd();
+				break;
+			}
+			win = win->GetNextWindow( GW_HWNDPREV );
+		}
+	}
+
+	if ( aite_hd != NULL ) {
+		UINT id = RegisterWindowMessage( _T("WM_TO_AITE") );
+		::PostMessage( aite_hd, id, (WPARAM)frame, NULL ) ;
+		return TRUE;
+	}
+			
+			
+---- mapfile----
+typedef struct{
+	int x;
+	int y;
+}Mystruct_t, *Mystruct_t;
+
+HANDLE hd = OpenFileMapping( FILE_MAP_ALL_ACCESS, TRUE, _T("MyShareMemory") );
+if ( hd == NULL ) { return FALSE; }
+PMystruct_t map = (PMystruct_t)MapViewOfFile( hd, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(Mystruct_t) );		
+if ( map == NULL ) { return FALSE; }
+
+
+
+
+
+			
